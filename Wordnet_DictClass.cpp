@@ -687,7 +687,7 @@ void getTermNumber( char *retVal, std::size_t termPos )
             
 }
 // Call setKanji(unsigned char *kanji) before calling kunyomi;
-std::vector<ustring> Wordnet_DictClass::kunyomi()
+std::vector<ustring> Wordnet_DictClass::kunyomi() const
 {
     std::vector<ustring> words ;//this vector will be returned    
     return words; 
@@ -743,7 +743,7 @@ std::vector<ustring> Wordnet_DictClass::kunyomi()
 
 
 // Call setKanji(unsigned char *kanji) before calling onyomi;
-std::vector<ustring> Wordnet_DictClass::onyomi()
+std::vector<ustring> Wordnet_DictClass::onyomi() const
 {                     
     std::vector<ustring> words ;//this vector will be returned    
     return words;

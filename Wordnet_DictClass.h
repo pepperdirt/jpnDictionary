@@ -60,8 +60,8 @@ class Wordnet_DictClass: public KanjiInfoClass {
            std::vector<ustring> synRealtions() const;
            std::vector<ustring> synRealtionTypes() const;
            
-           std::vector<ustring> kunyomi  ();
-           std::vector<ustring> onyomi   ();
+           std::vector<ustring> kunyomi  () const;
+           std::vector<ustring> onyomi   () const;
 //           int setKanji( const unsigned char *k); // virtual
            std::size_t kanjiNumber(const unsigned char *term) const; // virtual           
 
