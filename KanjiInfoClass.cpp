@@ -7,6 +7,8 @@
                                     + too much stuff to list; 
                                     + if user of class didn't know implementation details, should be okay, 
                                       however, will break code if using without setting Lookuptable:  getlastLookup(); 
+                                    + getKeySize() also returns +1 ( Should not effect client code )
+                                      because index will start at one(for client);
                                     + Addd safe use of memebers when no getDB is called; 
                                     + Modified lastLookup so it MUST NOT be 0;
                                       - Returns index values as +1 ( user of class should not know implementation details though )

@@ -33,7 +33,11 @@ class KanjiInfoClass {
            virtual ~KanjiInfoClass();
            void setKeyTable( std::vector<std::size_t> table) 
                                                       { 
-                                                      keyTable = table; 
+                                                      keyTable = table;
+                                                      // +1 to size so client code can use
+                                                      // .size() without modd member getKeySize();
+                                                      if( keyTable.size() )
+                                                          keyTable.push_back( 0 );  
                                                       }
            const unsigned char *const getDB() const { return DB->getRaw(); }
            
@@ -83,7 +87,9 @@ class KanjiInfoClass {
            { 
                        return DB->getFileLength(); 
            }
-                      
+           
+           // return size+1(in constructor);
+           // Allows client to iterate through loop by means( i < keyTable.size() ) { i++; }           
            std::size_t getKeySize() const 
            { return keyTable.size(); }
 
@@ -92,8 +98,8 @@ class KanjiInfoClass {
            std::size_t getKeyPos( std::size_t i ) const 
            { 
                if( getKeySize() == 0 ) { return lastLookup; }
-               return keyTable[ KanjiInfoClass::getlastLookup(i) ]; }
-           
+               return keyTable[ KanjiInfoClass::getlastLookup(i) ]; 
+           }
            
            // Return: see getKeyPos(); 
            std::size_t getPos() const { return KanjiInfoClass::getKeyPos( lastLookup ); }
@@ -129,7 +135,10 @@ class KanjiInfoClass {
            // Dont see any reason to make virtual.
            int setIndex(std::size_t lookupIndex)
            {
-               if( !lookupIndex ) { return 1; }
+               if( !lookupIndex ) {   
+                   resetKanjiIndex(); // Documentation purpose(MUST NOT == 0 );
+                   return 1; 
+               }
                
                std::size_t setKeyTable_IS_RUN = getKeySize();
                if( lookupIndex <= setKeyTable_IS_RUN ) {
