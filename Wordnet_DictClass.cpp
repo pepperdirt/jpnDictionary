@@ -72,6 +72,7 @@ namespace kanjiDB {
  * github:	github.com/pepperdirt
  *
          Latest update 2017/12/23 - Version 1.0.0
+                                    + added helper functions;
                                     + encapsualted more
                                       - Modified members to not accept arguments
                                       - Need to set position via setSynsetPos, kanjiNumber, 
@@ -884,6 +885,86 @@ std::vector<ustring> synsetIdWrittenForm(Wordnet_DictClass &WN)
 
     WN.setIndex(SAVED_SYNSET_INDEX); // restore state;         
     return retWrittenForm;    
+}
+
+// Helper function, returns sentences containing term;
+// Arg1: this
+// Arg2: term to use when searching for sentences
+// Arg3: number of sentences to grab ( if avalaible )
+std::vector<ustring> getExampleSentences(const Wordnet_DictClass &WN,
+                                         const unsigned char *const term,
+                                         const  int n)
+{
+    std::vector<ustring> retSentences;
+    if( !term || n <= 0 ) { return retSentences; }
+
+
+    int numSentenceCollected = 0;
+    const unsigned char *const exampleSentenceStr = (unsigned char *)"<Statement example=\"";
+    const int lenExampleSentenceStr = strlen( (char *)exampleSentenceStr );
+    const unsigned char *const exampleEnd = (unsigned char *)"\"";
+    
+    unsigned char buff[320];
+    std::size_t pos = 1;
+    while( (pos = WN.searchStr( exampleSentenceStr, pos ) )) { 
+        pos += lenExampleSentenceStr;
+        
+        // If term found in example str, Add to retSentences;
+        if( WN.searchStr( term, exampleEnd, pos ) ) {
+            WN.readStr( buff,
+                        WN.searchStr( exampleEnd, pos ) - pos, // length;
+                        pos
+                      );
+            
+            retSentences.push_back( buff );
+            
+            numSentenceCollected++; 
+            
+            if( numSentenceCollected == n ) { break; }
+        }
+    }
+    
+    return retSentences;
+}
+
+// Helper function, returns glosses containing term;
+// Arg1: this
+// Arg2: term to use when searching for in glosses
+// Arg3: number of sentences to grab ( if avalaible )
+std::vector<ustring> getGlossSentences(const Wordnet_DictClass &WN,
+                                         const unsigned char *const term,
+                                         const  int n)
+{
+    std::vector<ustring> retSentences;
+    if( !term || n <= 0 ) { return retSentences; }
+
+
+    int numSentenceCollected = 0;
+    const unsigned char *const exampleSentenceStr = (unsigned char *)"<Definition gloss=\"";
+    const int lenExampleSentenceStr = strlen( (char *)exampleSentenceStr );
+    const unsigned char *const exampleEnd = (unsigned char *)"\"";
+    
+    unsigned char buff[320];
+    std::size_t pos = 1;
+    while( (pos = WN.searchStr( exampleSentenceStr, pos ) )) { 
+        pos += lenExampleSentenceStr;
+        
+        // If term found in example str, Add to retSentences;
+        if( WN.searchStr( term, exampleEnd, pos ) ) {
+            WN.readStr( buff,
+                        WN.searchStr( exampleEnd, pos ) - pos, // length;
+                        pos
+                      );
+            
+            retSentences.push_back( buff );
+            
+            numSentenceCollected++; 
+            
+            if( numSentenceCollected == n ) { break; }
+        }
+    }
+    
+    return retSentences;
 }
 
 } // NAMESPACE; 
