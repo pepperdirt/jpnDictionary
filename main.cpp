@@ -13,7 +13,7 @@
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-	-Last Updated:2017/12/21  - Version 0.0.1
+	-Last Updated:2017/12/10  - Version 0.0.1
   
 */
     enum switch_names { FILE_NAME=0, VERSION_MAJOR=0, VERSION_MINOR=0,VERSION_=1 };
@@ -140,62 +140,37 @@ int main(const int argc, const char **const argv) {
     }
     unsigned char buff[800];
     
-    std::vector<ustring> synsetIDs = Wordnet.synset( term );
+    // Sets the term for Wordnet to use;
+    Wordnet.setKanji( term );
+    std::size_t INDEX_OF_TERM = Wordnet.getIndex();  // Term ids
 
-    // Term ids
-    std::size_t INDEX_OF_TERM;  //Wordnet.getIndex();
+    // synsetIDs are the similar terms(IDs) matching term; 
+    std::vector<ustring> synsetIDs = Wordnet.synset();    
+    std::vector<ustring> lexiconIds = Wordnet.lexiconID(); 
 
-    std::vector<ustring> lexiconIds;
-    if( Wordnet.getKeySize() == 0 ) { 
-         // Find strPos;
-         const int STR_SIZE = strlen((char *)term);
-         unsigned char tmp[ STR_SIZE + 2 + 1 ];
-         int i=0; 
-         tmp[ i ] = '\'';
-         i++;
-         for(int j=0; j< STR_SIZE; j++, i++) { 
-             tmp[ i ] = term[ j ];
-         }
-         tmp[ i ] = '\'';
-         tmp[ i +1 ] = '\0';
-         i += 1;
-         
-         INDEX_OF_TERM = Wordnet.searchStr( tmp, 1 );
-         if( INDEX_OF_TERM == 0  ) { 
-             // Test out; Try find first occurrence LOOSELY ( without ending quote );
-             tmp[i-1] = '\0';
-             INDEX_OF_TERM = Wordnet.searchStr( tmp, 1 );// skip past first char; 
-         }
-         if( INDEX_OF_TERM ) { // ACTUALLY CODED SO POSSIBLE 0; FIX THIS
-             INDEX_OF_TERM++;
-             lexiconIds = Wordnet.lexiconID( INDEX_OF_TERM );              
-         }
-
-
-    } 
-    else { 
-         INDEX_OF_TERM = Wordnet.getIndex();
-         lexiconIds = Wordnet.lexiconID( INDEX_OF_TERM );
-    }
-std::cout << "SEARCH FOUND: "<< INDEX_OF_TERM << "; \n";
 
     const unsigned char **holdSynsetIDs;
     if( synsetIDs.size() ) { holdSynsetIDs = (const unsigned char**)&synsetIDs[0];}
+    int holdSynsetID_Index = 0;
     int currentIndex = 0;
     
     // Print the first synsetID( snynset ) w/a definition
     if( define ) { 
-        define = 0;
-        while( currentIndex < synsetIDs.size()) { 
-            Wordnet.setSynsetPos( holdSynsetIDs[ currentIndex ] );
+        int numDefined = 0;
+        while( numDefined < define && holdSynsetID_Index < synsetIDs.size()) { 
+            Wordnet.setSynsetPos( holdSynsetIDs[ holdSynsetID_Index ] );
             if( Wordnet.defineSynset( buff ) == 0 ) { 
                 std::cout << buff << std::endl;
-                define = 1;
-                break;
+                numDefined++;
+                if( numDefined == define ) { break; }
             }            
-            currentIndex++;
+            holdSynsetID_Index++;
         }
+        
+        define = numDefined; 
     }
+    
+    INDEX_OF_TERM = holdSynsetID_Index;
 
 if( define ) { 
     // Print the first example Sentence ( starting from currentIndex
@@ -203,7 +178,7 @@ if( define ) {
     //   { find next example w/Term included.; }
     std::vector<ustring> exmapleSentences;
     if( sentences ) { 
-            std::size_t HOLD_POS = Wordnet.setSynsetPos( holdSynsetIDs[ currentIndex ] ); // re-lookup
+            std::size_t HOLD_POS = Wordnet.setSynsetPos( holdSynsetIDs[ holdSynsetID_Index ] ); // re-lookup
 
             Wordnet.setIndex( INDEX_OF_TERM );
 
@@ -225,6 +200,11 @@ if( define ) {
                 }
             }
             
+            if( exmapleSentences.size() == 0 ) { 
+                // Find another Example sentence containing term; 
+                int a;    
+            }
+            
             if( exmapleSentences.size() ) { 
                 std::cout << "Sentences: \n";
                 for(int j=0;j < sentences&& j< exmapleSentences.size();j++) { 
@@ -234,65 +214,18 @@ if( define ) {
             
     }
 
-//std::cout << "HERE\n";
 
     // Print synonyms
     if( synonym ) {
-        const int CURRENT = currentIndex;
-//std::cout << "HERE\n";
-
-        currentIndex = 0;
-        Wordnet.setIndex( INDEX_OF_TERM ); // does nothing; 
-//std::cout << "HERE\n";
+        std::vector<ustring> termsMatchingSynsets = synsetIdWrittenForm( Wordnet );
+        const int matchSize = termsMatchingSynsets.size();
+        if( matchSize ) { 
+            std::cout << "Synsets: " << std::endl
+                      << termsMatchingSynsets[ 0 ];  
+        }
         
-        lexiconIds = Wordnet.lexiconID( INDEX_OF_TERM );
-        int lexiconIdLen = lexiconIds.size();
-        if( synonym > lexiconIdLen ) { synonym = lexiconIdLen; }
-//std::cout << "HERE\n";
-        
-        const unsigned char *const lexiconTag = (unsigned char *)"<LexicalE";
-        const unsigned char *const writtenForm = (unsigned char *)"<Lemma writtenForm='";
-        const unsigned char *const EndwrittenForm = (unsigned char *)"'";
-        
-        const unsigned char **holdSynsetIDs = (const unsigned char**)&lexiconIds[0];
-        for(int i=0, found = 0; i < lexiconIdLen; i++) { 
-std::cout << "i("<<holdSynsetIDs[i]<<"); ";
-            holdSynsetIDs[ i ];
-
-            std::size_t pos =1;
-            const unsigned char *const endLexEntry = (unsigned char *)"'>";
-
-            // search for lexstring (TOP HEADER);
-            while( (pos = Wordnet.searchStr(lexiconTag, pos)) ) {
-                pos+= 19; // <LexicalEntry id ='
-                
-                // Pos will be same if pos is correct; 
-                if( pos == Wordnet.searchStr( holdSynsetIDs[ i ], endLexEntry, pos ) ) { 
-                    if( !found ) { 
-                        // Buff now has a new Term;
-                        std::cout << "Synsets: "<< std::endl; 
-                    }
-                    else { 
-                        std::cout << "; ";
-                    }
-                    // Found!
-                    
-                    // Find Term, then Print the Term found there;
-                    pos = Wordnet.searchStr( writtenForm, pos );
-                    pos+= 20;
-                    
-                    Wordnet.readStr( buff,
-                                     Wordnet.searchStr(EndwrittenForm, pos) - pos,
-                                     pos
-                                   );
-                    std::cout << buff;
-                    
-                    found++;
-                    break; 
-                }
-            }
-
-            if( found == synonym ) { break; }            
+        for(int i = 1; i < synonym && i < matchSize; i++) {
+            std::cout << "; " << termsMatchingSynsets[ i ];
         }
     }
 

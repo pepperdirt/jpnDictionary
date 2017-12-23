@@ -66,16 +66,24 @@ Definitions of term / Example sentences of term;
 //namespace wordnetDB { 
 namespace kanjiDB { 
 
-  const char Wordnet_DictClass_VERSION[]= "0.0.1";
+  const char Wordnet_DictClass_VERSION[]= "1.0.0";
 /*
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-         Latest update 2017/11/17 - Version 0.0.1
+         Latest update 2017/12/23 - Version 1.0.0
+                                    + encapsualted more
+                                      - Modified members to not accept arguments
+                                      - Need to set position via setSynsetPos, kanjiNumber, 
+                                    + virtual member redefined (kanjiNumber ) to find term;
+                                    TODO: look over logic again. Is design solid? -- as per THIS(1.0.0) update
+                                    TODO2: actually document/version proper. Should not update LARGE chunks
+                                           Maybe learn how to git from local storage ( is it possible? ).
+                                    Version 0.0.1
 */
 
 Wordnet_DictClass::Wordnet_DictClass(const char fName[]) : keytable_DefinitionPos(0),
-                                                           savedSynset(0),
+                                                           savedSynset(1),
                                                            SYNSET_STR((unsigned char *)"synset='jpn-1.1-"), 
                                                            END_LEXICON_ENTRY_STR((unsigned char *)"</LexicalEntry>"),
                                                            SYNSET_TAG((unsigned char *)"<Synset"),
@@ -85,6 +93,7 @@ Wordnet_DictClass::Wordnet_DictClass(const char fName[]) : keytable_DefinitionPo
                                                            END_EXAMPLE_STR   ((unsigned char *)"\"/>"),                                                           
                                                            END_SYNSET_TAG   ((unsigned char *)"</Synset>"),                                                           
                                                            SYNSET_RELATION   ((unsigned char *)"<SynsetRelation targets='"),                           
+                                                           SYNSET_RELATION_TYPE   ((unsigned char *)"relType='"),                           
                                                            WRITTEN_FORM   ((unsigned char *)"writtenForm='"),                           
                                                            SENSE_ID_WRITTEN   ((unsigned char *)"<Sense id='"),                           
                                                            END_SENSE_ID_WRITTEN   ((unsigned char *)"_"),                           
@@ -95,8 +104,8 @@ Wordnet_DictClass::Wordnet_DictClass(const char fName[]) : keytable_DefinitionPo
   file(getFileInConstrutor(fName) ),  
   ptrPosition(0) */
 {  
-
-return ;
+ const int OPTIMIZE_LEVEL = 0; 
+ if( OPTIMIZE_LEVEL == 0 ) { return ; }
 /*
    *
    *     KanjiInfoClass::setKeyTable( kebPositions_sorted ) will be filled 
@@ -177,8 +186,9 @@ return ;
     }
     KanjiInfoClass::setKeyTable( keysIndex );
     
-    return ; 
-    // Too memory intensive to create 2nd lookup table; 
+ if( OPTIMIZE_LEVEL == 1 ) { return ; }
+ 
+     // Too memory intensive to create 2nd lookup table; 
     // Need to rethink methodology; 
     
     // Now, find definitions for the keysIndex table. 
@@ -283,6 +293,7 @@ return ;
     }
     
     
+     if( OPTIMIZE_LEVEL == 2 ) { return ; } 
 }
 
 Wordnet_DictClass::~Wordnet_DictClass() 
@@ -345,19 +356,17 @@ unsigned int Wordnet_DictClass::ballparkIndexVal( const unsigned char *const ter
 }
 
 // Gets a set of synsets for a given index;
-// if SIZE() == 0, Changes behavior. index becomes POSITION in file; 
-std::vector<ustring> Wordnet_DictClass::synset(const std::size_t index ) const
+// if SIZE() == 0, Changes behavior. index becomes POSITION in file;
+// Synsets are IDs of similar term;
+std::vector<ustring> Wordnet_DictClass::synset() const
 {
     std::vector<ustring> retVal;
-    std::size_t SIZE = KanjiInfoClass::getKeySize();
     const int lenSYNSET_STR = strlen( (char *)SYNSET_STR );    
-    std::size_t  pos = index;
-    if( SIZE ) { pos = KanjiInfoClass::getKeyPos( index ); } 
-    if( pos >= fileLen() ) { return retVal; } // Only buffoverrun of fileLen considered
-                                              // Can still overrun by invalid index;
+    std::size_t  pos = KanjiInfoClass::getPos();            // Safe to use regardless of state. 
+    if( pos >= fileLen() ) { return retVal; } // buffoverrun of fileLen considered
     
     const int lenSynsetID_NUMBER = 8;
-    unsigned char synsetBuffer[ lenSynsetID_NUMBER+1 ];    
+    unsigned char synsetBuffer[ lenSynsetID_NUMBER+1 ];
     while( (pos = KanjiInfoClass::searchStr( SYNSET_STR, END_LEXICON_ENTRY_STR, pos )) ) 
     {
         pos+= lenSYNSET_STR;
@@ -368,6 +377,7 @@ std::vector<ustring> Wordnet_DictClass::synset(const std::size_t index ) const
     
     return retVal;
 }
+/*
 // Gets a set of synsets for a given term;
 std::vector<ustring> Wordnet_DictClass::synset(const unsigned char *const term) const
 {
@@ -404,7 +414,8 @@ std::vector<ustring> Wordnet_DictClass::synset(const unsigned char *const term) 
             pos += len_WRITTEN_FORM; 
             if( (FOUND_POS = KanjiInfoClass::searchStr( term, endWrittenForm, pos )) ) 
             {
-               // i == term; Found synsets; break;
+               // !SIZE, synset accepts POSITION of term
+               // inside <LexiconEntryid='w????; Found synsets; break;
                 return synset( FOUND_POS );
             }
         } 
@@ -413,22 +424,18 @@ std::vector<ustring> Wordnet_DictClass::synset(const unsigned char *const term) 
     return v;
     
 }
-
+*/
 
 // Gets a set of synsets for a given index;
 // if SIZE() == 0, Changes behavior. index becomes POSITION in file; 
-std::vector<ustring> Wordnet_DictClass::lexiconID(const std::size_t index ) const
+std::vector<ustring> Wordnet_DictClass::lexiconID() const
 {
     std::vector<ustring> retVal;
-    
-    std::size_t SIZE = KanjiInfoClass::getKeySize();
+
     const int lenSYNSET_STR = strlen( (char *)SENSE_ID_WRITTEN );    
+    std::size_t  pos = KanjiInfoClass::getPos();            // Safe to use regardless of state. 
+    if( pos >= fileLen() ) { return retVal; } // buffoverrun of fileLen considered
 
-    std::size_t  pos = index+1; // HACK. (need re-think impimentation); index ONLY used when lookupTable is not set;
-
-    if( SIZE ) { pos = KanjiInfoClass::getKeyPos( index ); } 
-    if( pos >= fileLen() ) { return retVal; } // Only buffoverrun of fileLen considered
-                                              // Can still overrun by invalid index;
     
     const int lenSynsetID_NUMBER = 7;
     unsigned char synsetBuffer[ lenSynsetID_NUMBER+1 ];    
@@ -443,6 +450,8 @@ std::vector<ustring> Wordnet_DictClass::lexiconID(const std::size_t index ) cons
 
     return retVal;
 }
+
+/*
 // returns Position 
 std::vector<ustring> Wordnet_DictClass::lexiconID(const unsigned char *const term) const
 {
@@ -489,6 +498,7 @@ std::vector<ustring> Wordnet_DictClass::lexiconID(const unsigned char *const ter
     return v;
         
 }
+*/
 
 // Need to search through DB for tag( SYNSET_TAG );
 std::size_t  Wordnet_DictClass::setSynsetPos(const unsigned char *const synsetID)
@@ -571,11 +581,12 @@ std::vector<ustring> Wordnet_DictClass::synRealtions() const
     unsigned char buff[320];
     const int lenOfSenseSyn = 8;
     const int len_EXAMPLE_STR = strlen( (char *)SYNSET_RELATION);
+    const int offsetOfId = 8; // to offset of id without('jpn-1.1-'); 
     std::size_t pos = savedSynset;
     
     while( (pos = KanjiInfoClass::searchStr( SYNSET_RELATION, END_SYNSET_TAG, pos )) )
     {
-        pos += len_EXAMPLE_STR;
+        pos += len_EXAMPLE_STR + offsetOfId;
         KanjiInfoClass::readStr( buff, 
                                  lenOfSenseSyn, // SIZE
                                  pos );
@@ -586,14 +597,81 @@ std::vector<ustring> Wordnet_DictClass::synRealtions() const
     return retRelationIDs;
 }
 
+// Grab all synRelations;
+std::vector<ustring> Wordnet_DictClass::synRealtionTypes() const
+{
+    std::vector<ustring> retRelationTypes;
+    unsigned char buff[20];
+    const int len_EXAMPLE_STR = strlen( (char *)SYNSET_RELATION_TYPE);
+    std::size_t pos = savedSynset;
+    const unsigned char *const singleQuote = (unsigned char *)"'";
+    
+std::cout << "INITIAL( " << pos << " ); \n";
+    while( (pos = KanjiInfoClass::searchStr( SYNSET_RELATION_TYPE, END_SYNSET_TAG, pos )) )
+    {
+std::cout << "pos( " << pos << " ); ";
+        pos += len_EXAMPLE_STR;
+        KanjiInfoClass::readStr( buff, 
+                                 KanjiInfoClass::searchStr( singleQuote, pos ) - pos, // SIZE
+                                 pos );
+
+        retRelationTypes.push_back( buff );
+    }
+    
+    return retRelationTypes;
+}
+
+
 //           std::vector<ustring> synRelations(const unsigned char *const ) const;
 
 
 
-int Wordnet_DictClass::setKanji( const unsigned char *k)
+// Virtual member, repurpose for Wordnet_DictClass; 
+// Arg1: term to define;
+// Return: 0-on-fail; Return IndexValue of Term on success; 
+// Return: 0-on-fail: setKeyTable_IS_NOT_RUN, return POSITION on success;( not -1 );
+// Special implementation: if no setKeyTable() was called(set), 
+// Defaults to POSITION instead of Index of Kanjil; 
+std::size_t Wordnet_DictClass::kanjiNumber(const unsigned char *term) const
 {
-    return 0;
+    std::size_t beg = 0;
+    // This should be safe (getKeyPos won't throw run-time error ); 
+    // Safe to run below searchStr(); - Arg2 MUST NOT be 0 when no keyTable set ( Wordnet.getKeySize()==0 );
+    // ^ safe; built into (base) class; 
+    if( searchStr( term, getKeyPos( getIndex() ) ) != getKeyPos( getIndex() ) ) 
+    {        
+        // Should not be allowed here if                   
+        beg = getKeyPos( getIndex() );
+        return beg; // Fail on 0; 
+    }
+
+    // Find strPos;
+    const int STR_SIZE = strlen((char *)term);
+    unsigned char tmp[ STR_SIZE + 2 + 1 ];
+    int i=0; 
+    tmp[ i ] = '\'';
+    i++;
+    for(int j=0; j< STR_SIZE; j++, i++) { 
+     tmp[ i ] = term[ j ];
+    }
+    tmp[ i ] = '\'';
+    tmp[ i +1 ] = '\0';
+    i += 1;
+    
+    std::size_t POSITION = searchStr( tmp, 1 );
+    if( POSITION == 0  ) { 
+     // Test out; Try find first occurrence LOOSELY ( without ending quote );
+     tmp[i-1] = '\0';
+     POSITION = searchStr( tmp, 1 );
+    }
+    if( POSITION ) { // ACTUALLY CODED SO POSSIBLE 0; FIX THIS?
+     POSITION++; // skip past first char; 
+     return POSITION;
+    }
+    
+    return 0; // Fail on 0;
 }
+
 
 // -35 pos from termPos == TermNumber; 
 void getTermNumber( char *retVal, std::size_t termPos )
@@ -716,6 +794,97 @@ std::vector<ustring> Wordnet_DictClass::onyomi()
 }
 
 
+// setSynsetPos has been run; 
+// Helper function, returns all WrittenForms associatiated w/sysnsetIds;
+std::vector<ustring> synsetIdWrittenForm(Wordnet_DictClass &WN)
+{
+    std::vector<ustring> retWrittenForm;
+    unsigned char buff[320];
+    std::size_t SAVED_SYNSET_INDEX = WN.getIndex(); // term lookup; 
+    std::size_t SYNSET_INDEX = 1;
+    WN.setIndex( SYNSET_INDEX ); // CANNOT == 0; 
+
+    std::vector<ustring> synsetRelTypes = WN.synRealtionTypes();
+    
+    std::vector<ustring> synsetRelations = WN.synRealtions();
+    const unsigned char ** sr  = (const unsigned char**)&synsetRelations[0];
+    const int synSIZE = synsetRelations.size();
+    const unsigned char *const senceIdTag = (unsigned char *)"<Sense id='";
+    const int senceIdTagSize = 11;
+    
+    const unsigned char *const writtenFormTag =    (unsigned char *)"<Lemma writtenForm='";
+    const int writtenFormTagSize = 20;
+    const unsigned char *const EndWrittenForm = (unsigned char *)"'"; //  iconEntry>";
+    const unsigned char *const EndLexiconEntry = (unsigned char *)"</Lex"; //  iconEntry>";
+    //    <Sense id='w230510_00668805-v' synset='jpn-1.1-00668805-v'/>
+    
+    const unsigned char ** retForm;
+    std::size_t pos = WN.getPos(); // MUST NOT == 0 when searching; 
+    std::size_t pos2 = 1;
+
+    
+    // Find EVERY writtenFormTag, then search for synsetId; 
+    while( (pos= WN.searchStr( writtenFormTag, pos )) ) {
+        pos+= writtenFormTagSize; 
+        
+        // Iterate through synsetRelations();
+        // Search for matches in current LexiconEntry; 
+        for(int i=0, sizeOf; i < synSIZE; i++) {
+            pos2 = WN.searchStr( sr[i], EndLexiconEntry, pos );
+            
+            // Match found, read writtenForm and add to retWrittenForm( if not duplicate )
+            if( pos2 ) { 
+                WN.readStr( buff, 
+                            WN.searchStr( EndWrittenForm, pos ) - pos, // strSize;  
+                            pos 
+                          );
+                sizeOf = strlen( (char *) buff );
+                int SIZE = retWrittenForm.size();
+                int notMatch = 1;
+                
+                // Only add to retWrittenForm if not a match
+                for(int c = 0; c < SIZE; c++) { 
+                    if( strlen( (char *)retForm[c] ) == sizeOf  ) { 
+                        //match += memcmp ( buff, retWrittenForm[c], sizeOf );
+                        if( 0 == (notMatch = memcmp ( buff, retForm[c], sizeOf )) ) { break; } // breaks if match is found ( match == 0 )
+                    }
+                }
+                
+                // didin't find a match
+                if( notMatch ) { 
+                    // Add to writtenForms found; 
+                    
+                    // Add relation type;
+                    buff[sizeOf] = '('; buff[sizeOf+1] = ' ';
+                    sizeOf += 2;
+                    int z=0;
+                    for(; synsetRelTypes[i][z]; z++) { 
+                        buff[ sizeOf+z ] = synsetRelTypes[i][z];
+                    }
+                    buff[sizeOf+z] = ' '; buff[sizeOf+z+1] = ')';
+                    buff[sizeOf+z+2] = '\0';  
+                    
+                    
+                    retWrittenForm.push_back( buff );
+                    retForm  = (const unsigned char**)&retWrittenForm[0];
+                }
+            }
+        }
+        
+        SYNSET_INDEX++; 
+
+
+        // Speeds up lookups by placing pos at next LexiconEntry; 
+        // if no LookupTable, sets to Arg1; 
+        // Safely handles out-of-bounds; 
+        if( WN.setIndex( SYNSET_INDEX ) == 0 ) { // Success 
+            pos = WN.getPos(); 
+        }
+    }
+
+    WN.setIndex(SAVED_SYNSET_INDEX); // restore state;         
+    return retWrittenForm;    
+}
 
 } // NAMESPACE; 
 

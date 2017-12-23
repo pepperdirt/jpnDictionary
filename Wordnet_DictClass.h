@@ -17,7 +17,7 @@ class Wordnet_DictClass: public KanjiInfoClass {
             Wordnet_DictClass( const Wordnet_DictClass& other );             // no copy constructor
             Wordnet_DictClass(); // No default ctor
             std::size_t  *keytable_DefinitionPos; // holds pos of NUMERIC_VALUE of kanji ( not computated, simply a number assoc. w/Kanji )
-            std::size_t savedSynset;
+            std::size_t savedSynset;       // MUST NOT == 0 for life of program; 
     const unsigned char *const SYNSET_STR; // = (unsigned char *)"synset='jpn-1.1-"; // 01211019-n'/>
     const unsigned char *const END_LEXICON_ENTRY_STR; // = (unsigned char *)"</LexicalEntry>";
     const unsigned char *const SYNSET_TAG; //<Synset id='jpn-1.1-XXXXXXXX-a' baseConcept='3'>
@@ -27,6 +27,7 @@ class Wordnet_DictClass: public KanjiInfoClass {
     const unsigned char *const END_EXAMPLE_STR; // "/> 
     const unsigned char *const END_SYNSET_TAG;
     const unsigned char *const SYNSET_RELATION; // <SynsetRelation targets='jpn-1.1-01509066-a' relType='sim'/>
+    const unsigned char *const SYNSET_RELATION_TYPE; // <SynsetRelation targets='jpn-1.1-01509066-a' relType='sim'/>
     const unsigned char *const WRITTEN_FORM;    //       <Lemma writtenForm='ŒÛ•‘Œƒ—ã' partOfSpeech='n'/>
     const unsigned char *const SENSE_ID_WRITTEN; // <Sense id='w230510_00668805-v' synset='jpn-1.1-00668805-v'/>
     const unsigned char *const END_SENSE_ID_WRITTEN; // "_"; 
@@ -42,27 +43,27 @@ class Wordnet_DictClass: public KanjiInfoClass {
     private:
            unsigned int termValue(const std::size_t pos) const;
            unsigned int termValue(const unsigned char *const) const;
-           unsigned int ballparkIndexVal( const unsigned char *const ) const;
+           unsigned int ballparkIndexVal( const unsigned char *const) const; // May add to KanjiInfoClass, I like this idea; 
 
     public:
            // if setKeyTable() is NOT SET, changes behavior to position instead of indexVal;
-           std::vector<ustring> synset(const unsigned int termPosition) const;
-           std::vector<ustring> synset(const unsigned char *const term) const;
+           std::vector<ustring> synset() const;
            
-           std::vector<ustring> lexiconID(const unsigned int termIndex) const;
-           std::vector<ustring> lexiconID(const unsigned char *const term) const;
+           std::vector<ustring> lexiconID() const;
            
                       
            std::size_t  setSynsetPos(const unsigned char *const synsetID);
-           void setSynsetPos(const std::size_t i) { if(i<fileLen()){ savedSynset = i;} }
-           int  defineSynset(unsigned char *ret) const;
+           void setSynsetPos(const std::size_t i) { if(i&&i<fileLen()){ savedSynset = i;} }
+           std::size_t getSynsetPos() const { return savedSynset; }
+           int  defineSynset(unsigned char *ret) const; // 0-on-success;
            std::vector<ustring> examples() const;
            std::vector<ustring> synRealtions() const;
+           std::vector<ustring> synRealtionTypes() const;
            
            std::vector<ustring> kunyomi  ();
            std::vector<ustring> onyomi   ();
-           int setKanji( const unsigned char *k); // virtual
-                      
+//           int setKanji( const unsigned char *k); // virtual
+           std::size_t kanjiNumber(const unsigned char *term) const; // virtual           
 
            
            void getTermNumber( char *retVal, std::size_t termPos );
