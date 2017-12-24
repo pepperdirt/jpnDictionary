@@ -169,12 +169,26 @@ int main(const int argc, const char **const argv) {
     if( define ) { 
         int numDefined = 0;
         while( numDefined < define && holdSynsetID_Index < synsetIDs.size()) { 
+            int counter = 1;
             Wordnet.setSynsetPos( holdSynsetIDs[ holdSynsetID_Index ] );
             if( Wordnet.defineSynset( buff ) == 0 ) { 
-                std::cout << buff << std::endl;
-                numDefined++;
+                std::cout << counter << ". "<< buff << std::endl;
+                numDefined++; counter++;
                 if( numDefined == define ) { break; }
             }            
+            std::vector<ustring> SynsetId = Wordnet.synRealtions();
+            const unsigned char**ccc = (const unsigned char**)&SynsetId[0];
+            
+            for(int a = 0; a < SynsetId.size(); a++) 
+            {
+                Wordnet.setSynsetPos( ccc[ a ]  );
+                if( Wordnet.defineSynset( buff ) == 0 ) { 
+                    std::cout << counter << ". "<< buff << std::endl;
+                    numDefined++; counter++;
+                    if( numDefined == define ) { break; }
+                }                            
+            }
+            
             holdSynsetID_Index++;
         }
         
