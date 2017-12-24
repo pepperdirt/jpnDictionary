@@ -49,7 +49,7 @@ std::size_t KanjiInfoClass::kanjiNumber(const unsigned char *kanji) const
     
     std::size_t beg = 0;
     if( searchStr( kanji, getKeyPos( lastLookup ) ) != getKeyPos(lastLookup) ) {
-        for( i = 0; i < size; i++,j=0, compare=0) { 
+        for( i = 1; i < size; i++,j=0, compare=0) { 
             kPos = getKeyPos(i);
             
             // Compare key w/Kanji; 
@@ -60,7 +60,7 @@ std::size_t KanjiInfoClass::kanjiNumber(const unsigned char *kanji) const
 // NEW ADD // (DATABASE compare; )
             if( compare == kanjiSize  ) { 
 
-                beg = i + 1; 
+                beg = i; 
                 break; 
             }
             

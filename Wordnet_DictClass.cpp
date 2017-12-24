@@ -73,6 +73,8 @@ namespace kanjiDB {
  *
          Latest update 2017/12/23 - Version 1.0.0
                                     + added helper functions;
+                                    + kanjiNumber() logic err, flipped
+                                    + added Optimization Options(and implemented)
                                     + encapsualted more
                                       - Modified members to not accept arguments
                                       - Need to set position via setSynsetPos, kanjiNumber, 
@@ -83,7 +85,9 @@ namespace kanjiDB {
                                     Version 0.0.1
 */
 
-Wordnet_DictClass::Wordnet_DictClass(const char fName[]) : keytable_DefinitionPos(0),
+Wordnet_DictClass::Wordnet_DictClass(const char fName[],
+                                     const OPTIMIZE &O)  : WORDNET_OPTIMIZE_LEVEL( O.getVal() ), 
+                                                                                                      keytable_DefinitionPos(0),
                                                            savedSynset(1),
                                                            SYNSET_STR((unsigned char *)"synset='jpn-1.1-"), 
                                                            END_LEXICON_ENTRY_STR((unsigned char *)"</LexicalEntry>"),
@@ -105,8 +109,7 @@ Wordnet_DictClass::Wordnet_DictClass(const char fName[]) : keytable_DefinitionPo
   file(getFileInConstrutor(fName) ),  
   ptrPosition(0) */
 {  
- const int OPTIMIZE_LEVEL = 0; 
- if( OPTIMIZE_LEVEL == 0 ) { return ; }
+ if( WORDNET_OPTIMIZE_LEVEL == 0 ) { return ; }
 /*
    *
    *     KanjiInfoClass::setKeyTable( kebPositions_sorted ) will be filled 
@@ -159,7 +162,8 @@ Wordnet_DictClass::Wordnet_DictClass(const char fName[]) : keytable_DefinitionPo
       
 
     // Now have numeric values. Sort keys from Smallest to greatest values; 
-    const unsigned int kebSize = keysIndex.size();
+    // -1: MUST NOT move the last index(end of file), Would need to code for this exception otherwise
+    unsigned int kebSize = keysIndex.size() - 1; 
     for(int i=0; i < kebSize; i++) { 
         unsigned int smallest = keySum[i];
         unsigned int indx = i;
@@ -186,8 +190,9 @@ Wordnet_DictClass::Wordnet_DictClass(const char fName[]) : keytable_DefinitionPo
         }
     }
     KanjiInfoClass::setKeyTable( keysIndex );
+    kebSize++; 
     
- if( OPTIMIZE_LEVEL == 1 ) { return ; }
+ if( WORDNET_OPTIMIZE_LEVEL == 1 ) { return ; }
  
      // Too memory intensive to create 2nd lookup table; 
     // Need to rethink methodology; 
@@ -294,7 +299,7 @@ Wordnet_DictClass::Wordnet_DictClass(const char fName[]) : keytable_DefinitionPo
     }
     
     
-     if( OPTIMIZE_LEVEL == 2 ) { return ; } 
+     if( WORDNET_OPTIMIZE_LEVEL == 2 ) { return ; } 
 }
 
 Wordnet_DictClass::~Wordnet_DictClass() 
@@ -607,10 +612,8 @@ std::vector<ustring> Wordnet_DictClass::synRealtionTypes() const
     std::size_t pos = savedSynset;
     const unsigned char *const singleQuote = (unsigned char *)"'";
     
-std::cout << "INITIAL( " << pos << " ); \n";
     while( (pos = KanjiInfoClass::searchStr( SYNSET_RELATION_TYPE, END_SYNSET_TAG, pos )) )
     {
-std::cout << "pos( " << pos << " ); ";
         pos += len_EXAMPLE_STR;
         KanjiInfoClass::readStr( buff, 
                                  KanjiInfoClass::searchStr( singleQuote, pos ) - pos, // SIZE
@@ -639,7 +642,7 @@ std::size_t Wordnet_DictClass::kanjiNumber(const unsigned char *term) const
     // This should be safe (getKeyPos won't throw run-time error ); 
     // Safe to run below searchStr(); - Arg2 MUST NOT be 0 when no keyTable set ( Wordnet.getKeySize()==0 );
     // ^ safe; built into (base) class; 
-    if( searchStr( term, getKeyPos( getIndex() ) ) != getKeyPos( getIndex() ) ) 
+    if( searchStr( term, getKeyPos( getIndex() ) ) == getKeyPos( getIndex() ) ) 
     {        
         // Should not be allowed here if                   
         beg = getKeyPos( getIndex() );
@@ -658,16 +661,30 @@ std::size_t Wordnet_DictClass::kanjiNumber(const unsigned char *term) const
     tmp[ i ] = '\'';
     tmp[ i +1 ] = '\0';
     i += 1;
+    std::size_t POSITION;
     
-    std::size_t POSITION = searchStr( tmp, 1 );
-    if( POSITION == 0  ) { 
-     // Test out; Try find first occurrence LOOSELY ( without ending quote );
-     tmp[i-1] = '\0';
-     POSITION = searchStr( tmp, 1 );
-    }
-    if( POSITION ) { // ACTUALLY CODED SO POSSIBLE 0; FIX THIS?
-     POSITION++; // skip past first char; 
-     return POSITION;
+    if( WORDNET_OPTIMIZE_LEVEL > 0 ) { 
+        std::size_t indx = 1;
+        const unsigned char *const ending_char_singlequote = (unsigned char *)"'";
+        
+        std::size_t SIZE = getKeySize();
+        for(indx; indx < SIZE; indx++) { 
+            POSITION = getKeyPos(indx);
+            if( searchStr( term, ending_char_singlequote, POSITION ) ) { 
+                return indx; 
+            }
+        }
+    } else { 
+        POSITION = searchStr( tmp, 1 );
+        if( POSITION == 0  ) { 
+         // Test out; Try find first occurrence LOOSELY ( without ending quote );
+         tmp[i-1] = '\0';
+         POSITION = searchStr( tmp, 1 );
+        }
+        if( POSITION ) { // ACTUALLY CODED SO POSSIBLE 0; FIX THIS?
+         POSITION++; // skip past first char; 
+         return POSITION;
+        }
     }
     
     return 0; // Fail on 0;
@@ -808,6 +825,7 @@ std::vector<ustring> synsetIdWrittenForm(Wordnet_DictClass &WN)
     std::vector<ustring> synsetRelTypes = WN.synRealtionTypes();
     
     std::vector<ustring> synsetRelations = WN.synRealtions();
+
     const unsigned char ** sr  = (const unsigned char**)&synsetRelations[0];
     const int synSIZE = synsetRelations.size();
     const unsigned char *const senceIdTag = (unsigned char *)"<Sense id='";
@@ -820,7 +838,7 @@ std::vector<ustring> synsetIdWrittenForm(Wordnet_DictClass &WN)
     //    <Sense id='w230510_00668805-v' synset='jpn-1.1-00668805-v'/>
     
     const unsigned char ** retForm;
-    std::size_t pos = WN.getPos(); // MUST NOT == 0 when searching; 
+    std::size_t pos = 1; // WN.getPos(); // MUST NOT == 0 when searching; 
     std::size_t pos2 = 1;
 
     

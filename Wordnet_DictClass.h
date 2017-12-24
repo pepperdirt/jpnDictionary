@@ -2,10 +2,26 @@
 #define WORDNET_DICTCLASS
 #include <cstring>
 #ifndef KANJI_INFO_CLASS
-  #include "KanjiInfoClass.cpp" // pure-poly-base class; 
+  #include "KanjiInfoClass.cpp" // pure-poly-base class; 1.0.0
 #endif
 
 namespace kanjiDB { 
+#ifndef OPTIMIZE_CLASS
+#define OPTIMIZE_CLASS
+class OPTIMIZE { 
+       public: 
+      static OPTIMIZE NO_OPTIMIZATION () { return OPTIMIZE(0); }
+      static OPTIMIZE OPTIMIZE_SOME()    { return OPTIMIZE(1); }
+      static OPTIMIZE OPTIMIZE_MORE()    { return OPTIMIZE(2); }
+      const int getVal() const { return this->optimizeLevel; }
+      OPTIMIZE(const OPTIMIZE &m):optimizeLevel(m.getVal()) {}; 
+       private:
+      explicit OPTIMIZE(unsigned int m):optimizeLevel(m) {}; 
+      const unsigned int optimizeLevel;
+
+};    
+#endif
+
           // Incorrectly derived from KanjiInfoClass ( Not a Kanji info class )
           //  We're goin' to roll with it thought. Probably should simply inherit
           //  the class rather than derive from...
@@ -16,6 +32,8 @@ class Wordnet_DictClass: public KanjiInfoClass {
             Wordnet_DictClass& operator=( const Wordnet_DictClass &other );  // no assignment op
             Wordnet_DictClass( const Wordnet_DictClass& other );             // no copy constructor
             Wordnet_DictClass(); // No default ctor
+            const int WORDNET_OPTIMIZE_LEVEL;
+
             std::size_t  *keytable_DefinitionPos; // holds pos of NUMERIC_VALUE of kanji ( not computated, simply a number assoc. w/Kanji )
             std::size_t savedSynset;       // MUST NOT == 0 for life of program; 
     const unsigned char *const SYNSET_STR; // = (unsigned char *)"synset='jpn-1.1-"; // 01211019-n'/>
@@ -37,7 +55,7 @@ class Wordnet_DictClass: public KanjiInfoClass {
 
 // relType='dmnc' / hype / sim / hypo / hprt / inst / dmnr / mprt / hmem / dmnu / also
     public:
-            explicit Wordnet_DictClass(const char fName[]);
+            explicit Wordnet_DictClass(const char fName[], const OPTIMIZE &OptimizeLevel );
            ~Wordnet_DictClass();
 
     private:

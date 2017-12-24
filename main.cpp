@@ -115,7 +115,7 @@ int main(const int argc, const char **const argv) {
          WORDNET_DB = argv[switchIndexes[ W_WORDNET ]];
 
 
-    kanjiDB::Wordnet_DictClass Wordnet( WORDNET_DB );
+    kanjiDB::Wordnet_DictClass Wordnet( WORDNET_DB, kanjiDB::OPTIMIZE::NO_OPTIMIZATION ()  );
     if( 1==1 ) { 
         if( !Wordnet.fileLen() ) { 
             std::cout << "Error: "<< WORDNET_DB << " Not Found!\n";
@@ -134,16 +134,18 @@ int main(const int argc, const char **const argv) {
             return 2; 
         }
     }
-    
-    if( term && !define && !sentences && !synonym ) { 
+
+    if( term && term[0] && !define && !sentences && !synonym ) { 
         define = 1; // At least define term; 
     }
     unsigned char buff[800];
     
     // Sets the term for Wordnet to use;
-    Wordnet.setKanji( term );
+    if( Wordnet.setKanji( term ) != 0 ) {
+        std::cout << "term( "<<term<<" ) not found.\n";
+        return 1;
+    } 
     std::size_t INDEX_OF_TERM = Wordnet.getIndex();  // Term ids
-
     // synsetIDs are the similar terms(IDs) matching term; 
     std::vector<ustring> synsetIDs = Wordnet.synset();    
     std::vector<ustring> lexiconIds = Wordnet.lexiconID(); 
