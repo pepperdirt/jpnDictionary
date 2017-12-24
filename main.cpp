@@ -86,7 +86,16 @@ int main(const int argc, const char **const argv) {
     term = (unsigned char *)*(argv+argc-1); // Last value MUST BE term;
     
     if(switchIndexes[ D_Define ]  ) 
-        define = 1;
+        define =         strToNum(
+                    argv[switchIndexes[ D_Define ]],
+                    0,
+                    strNumlen( 
+                                argv[switchIndexes[ D_Define ]],
+                                0
+                             )
+                 );
+    if(switchIndexes[ D_Define ] && !define  ) {  define = 1; }
+
     if(switchIndexes[ E_EXTRA_SENTENCES ]  ) 
          sentences =  
          strToNum(
@@ -352,14 +361,15 @@ void getInputFieldNums( std::vector<int> ret, const char **const argv, const int
 void help() { 
 
 std::cout << "CLI Japanese to Japanese dictionary.\n"
-         <<"jpn_dict.exe [-D] [-C Delim] [-S [ ## ]] [-E [ ## ]] [-V] [-H] Term\n"
+         <<"jpn_dict.exe [-W jpn_wn_lmf.xml] [-D ## ] [-S ## ] [-E ## ] [-V] [-H] Term\n"
 
          << "\nDictionarie -W is Requried. Download First and\n"
-         << "supply them to program. Default values: JMdict.xml / kanjidic2.xml\n"
+         << "supply to program. Default value: jpn_wn_lmf.xml\n"
 
 		<< "\n"
 		<< "\t Term The term to lookup.\n"
 		<< "  -D\tDefine Term.\n"
+		<< "\t Optional: supply the number of maximum definitions to list.\n"
         << "  -S\tSynonym for Term.\n"
         << "\t Optional: supply the number of maximum synonym to list.\n"
         << "  -E\tExample sentences for Term.\n"
@@ -368,12 +378,9 @@ std::cout << "CLI Japanese to Japanese dictionary.\n"
 		<< "  -V\tPrints the version\n"
 		<< "\n"
 		<< "  Example Usage: \n"
-        << "jpn_dict.exe -D JMdict_e_ALL_LANGUAGES.xml -W kanjidic2.xml -i list.txt\n"
-        << "-K K O T Y -o out.cvs -M -C ;\n"
-		<< "\t This is command will use default Delim of \"newLine\" in file list.txt\n"
-		<< "\t and output the delim (-C) ';' to out.cvs. It will use default \n"
-        << "\t search field (-S), field 1 and output (-K) On/Kun yomi, Translation,\n"
-        << "\t and Translation of Kun-Yomis to output out.csv using HTML styling(-M).\n"
+        << "main.exe -D -S 99 -E 99 TERM\n"
+		<< "\t This is command will print one definition and up to 99 sentences\n"
+		<< "\t and synsets for TERM\n"
 		<< "\n";
 
 } 
