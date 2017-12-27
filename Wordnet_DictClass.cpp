@@ -71,7 +71,10 @@ namespace kanjiDB {
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-         Latest update 2017/12/23 - Version 1.0.0
+         Latest update 2017/12/27 - Version 
+                                    + kanjiNumber(const unsigned char *term)
+                                      - fixed to return proper w/Optimization level > 0;
+                                  - Version 1.0.0
                                     + added helper functions;
                                     + kanjiNumber() logic err, flipped
                                     + added Optimization Options(and implemented)
@@ -663,12 +666,30 @@ std::size_t Wordnet_DictClass::kanjiNumber(const unsigned char *term) const
     i += 1;
     std::size_t POSITION;
     
-    if( WORDNET_OPTIMIZE_LEVEL > 0 ) { 
+    if( WORDNET_OPTIMIZE_LEVEL > 0 ) {
+        // Sets str to search to char AFTER quote char; (including ending quote delim );
+        for(i=0; i < STR_SIZE; i++){ 
+            tmp[ i ] = tmp[i+1];
+        } 
+        tmp[ i ] = '\'';
+        tmp[ i+1 ] = '\0';
+        
         std::size_t indx = 1;
         const unsigned char *const ending_char_singlequote = (unsigned char *)"'";
         
         std::size_t SIZE = getKeySize();
-        for(indx; indx < SIZE; indx++) { 
+        // Strict search, only returns term matching whole word in dict. 
+        for(indx = 1; indx < SIZE; indx++) { 
+            POSITION = getKeyPos(indx);
+            
+            if( searchStr( tmp, ending_char_singlequote, POSITION ) == POSITION ) { 
+                return indx; 
+            }
+        }
+
+
+        // Loose search ( returns positive for match INSIDE whole term;
+        for(indx = 1; indx < SIZE; indx++) { 
             POSITION = getKeyPos(indx);
             if( searchStr( term, ending_char_singlequote, POSITION ) ) { 
                 return indx; 
