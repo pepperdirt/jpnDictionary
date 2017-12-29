@@ -13,10 +13,17 @@
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-	-Last Updated:2017/12/10  - Version 0.0.1
+	-Last Updated:2017/12/10  - Version 0.0.2 + need test memcmp
+	                            + Synsets returns first synsets encounterd .
+	                            + Improved Example Sentences ( almost gaurunteed 
+	                              to return an example sentence. 
+                                + Fixed logic, can return Examples even if no -D switch
+                                  supplied. 
+                              - Version 0.0.1
+	                            Version 
   
 */
-    enum switch_names { FILE_NAME=0, VERSION_MAJOR=0, VERSION_MINOR=0,VERSION_=1 };
+    enum switch_names { FILE_NAME=0, VERSION_MAJOR=0, VERSION_MINOR=0,VERSION_=2 };
     enum COMMAND_SWITCHES { 
          D_Define=1, 
          E_EXTRA_SENTENCES=2,
@@ -80,7 +87,7 @@ int main(const int argc, const char **const argv) {
     int sentences = 0; // Random sentences, no format specified
     int synonym   = 0; // Num synonyms to list;
     const unsigned char *term;
-    const char HEADER[4]= { 0xEF, 0xBB, 0xBF, 0x00 };
+    const unsigned char HEADER[4]= { 0xEF, 0xBB, 0xBF, 0x00 };
     
     // USER INPUT
     term = (unsigned char *)*(argv+argc-1); // Last value MUST BE term;
@@ -192,42 +199,59 @@ int main(const int argc, const char **const argv) {
             holdSynsetID_Index++;
         }
         
-        define = numDefined; 
+        define = numDefined;         
     }
-    
-    INDEX_OF_TERM = holdSynsetID_Index;
 
-if( define ) { 
+
     // Print the first example Sentence ( starting from currentIndex
     // **Needs changed to (if currentIndex !haveExampleSentence ) 
     //   { find next example w/Term included.; }
     std::vector<ustring> exmapleSentences;
     if( sentences ) { 
-            std::size_t HOLD_POS = Wordnet.setSynsetPos( holdSynsetIDs[ holdSynsetID_Index ] ); // re-lookup
 
-            Wordnet.setIndex( INDEX_OF_TERM );
-
-            exmapleSentences = Wordnet.examples();
-            if( exmapleSentences.size() == 0  ) { 
-                // Find next example that contains TERM;
-                
-                // std::vector<ustring> lexiconIDs = lexiconID( INDEX_OF_TERM );
-                // No examples present; iterate through lexiconIDs, finding Position,
-                int i =0;
-                while( i  < synsetIDs.size() ) { 
-                    Wordnet.setSynsetPos( holdSynsetIDs[ i ] );
-                    if( Wordnet.defineSynset( buff ) == 0 ) { 
-                        exmapleSentences = Wordnet.examples();
-                        if( exmapleSentences.size() ) { break; }
+            for(int synIndex = 0, sentenceGrabbed = 0, synsetSIZE = synsetIDs.size(), SENTENCES_LEFT_TO_GRAB = sentences; 
+                    sentenceGrabbed < sentences &&
+                    synIndex < synsetSIZE; 
+                        synIndex++, SENTENCES_LEFT_TO_GRAB = sentences - sentenceGrabbed 
+               )
+            {  
+                std::size_t SYNSET_POSITION_FOUND = Wordnet.setSynsetPos( holdSynsetIDs[ synIndex ] );
+                if( SYNSET_POSITION_FOUND ) 
+                {
+                    std::vector<ustring> retExamples = Wordnet.examples();
+                    
+                    // Check against num left; Don't grab more
+                    // Sentences than needed. 
+                    int examplesSentencesToPUSH_BACK = retExamples.size();
+                    if( examplesSentencesToPUSH_BACK > SENTENCES_LEFT_TO_GRAB ) 
+                    {
+                        examplesSentencesToPUSH_BACK = SENTENCES_LEFT_TO_GRAB; 
+                    } 
+                    
+                    // Counter through returned Examples adding to examples();
+                    // Every iteration in this loop adds to sentencesGrabbed; 
+                    for(int sentenceCounter=0;
+                            sentenceCounter < examplesSentencesToPUSH_BACK; 
+                                sentenceCounter++, sentenceGrabbed++
+                       )
+                    {
+                        exmapleSentences.push_back( retExamples[ sentenceCounter ] );
                     }
-                
-                    i++;
                 }
-            }
-            
-            if( exmapleSentences.size() == 0 ) { 
-                // Find another Example sentence containing term; 
-                int a;    
+            }          
+            // Find any sentences(example) including term;
+            if( exmapleSentences.size() < sentences ) { 
+                
+                std::vector<ustring> retExamples = getExampleSentences( Wordnet, 
+                                                                          term,
+                                                                          ( sentences - exmapleSentences.size() ),
+                                                                          exmapleSentences
+                                                                      );
+                int examplesSentencesToPUSH_BACK = retExamples.size();
+                for(int i=0; i < examplesSentencesToPUSH_BACK; i++) { 
+                    exmapleSentences.push_back( retExamples[ i ] );
+                }        
+                
             }
             
             if( exmapleSentences.size() ) { 
@@ -236,12 +260,12 @@ if( define ) {
                     std::cout << exmapleSentences[j] << std::endl;
                 }
             }
-            
     }
 
 
     // Print synonyms
     if( synonym ) {
+        Wordnet.setSynsetPos( holdSynsetIDs[ 0 ] );        
         std::vector<ustring> termsMatchingSynsets = synsetIdWrittenForm( Wordnet );
         const int matchSize = termsMatchingSynsets.size();
         if( matchSize ) { 
@@ -255,7 +279,7 @@ if( define ) {
     }
 
 std::cout << std::endl;
-} // not define; 
+
 //    std::cout << "END\n";
     
 
@@ -289,8 +313,7 @@ void getSwitchIndex(unsigned int *const ret, const int argc, const char **const 
                     break;
                case 'W':                
                     ret[ W_WORDNET ] = i+1; 
-                    break;
-               
+                    break;               
                
                case 'H': 
                     ret[ H_help ] = i+1; 
@@ -382,7 +405,7 @@ std::cout << "CLI Japanese to Japanese dictionary.\n"
 
 		<< "\n"
 		<< "\t Term The term to lookup.\n"
-		<< "  -D\tDefine Term.\n"
+		<< "  -D\tDefine Term. If only Term is supplied, will define Term regardless.\n"
 		<< "\t Optional: supply the number of maximum definitions to list.\n"
         << "  -S\tSynonym for Term.\n"
         << "\t Optional: supply the number of maximum synonym to list.\n"

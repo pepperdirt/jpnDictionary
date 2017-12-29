@@ -10,6 +10,14 @@
 <Synset id='jpn-1.1-15121880-n' baseConcept='3'>
 <SenseAxis id='sa_jpn-1.1-22247' relType='eq_synonym'>
 
+// MAY optimize dictionary:
+       // Simply replace all <Synset id='jpn-1.1-????????-?' 
+       // Replace the ID( past jpn-1.1-') with the RAW number( POSITION of that 
+                                                               particular ID )
+       // THIS ALONE, should speed up lookups considerably. 
+       // Leave the <Synset id='jpn-1.1-01211489-n' baseConcept='3'> tag
+       //  as-is. No need to modify. In fact, it will give the POSITION a value;
+       //  AND if need-be, can use position of that particular tag to track-back to Originating ID
 
 A lexicon entry ( entry for term );
    <LexicalEntry id ='w211719'>
@@ -66,12 +74,15 @@ Definitions of term / Example sentences of term;
 //namespace wordnetDB { 
 namespace kanjiDB { 
 
-  const char Wordnet_DictClass_VERSION[]= "1.0.0";
+  const char Wordnet_DictClass_VERSION[]= "1.0._";
 /*
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-         Latest update 2017/12/27 - Version 
+         Latest update 2017/12/27 - Version 1.0._ 
+                                    + getExampleSentences(?) Feature added:  
+                                      - Pass in already added sentences as argument
+                                        check for matches, dont add matches
                                     + kanjiNumber(const unsigned char *term)
                                       - fixed to return proper w/Optimization level > 0;
                                   - Version 1.0.0
@@ -521,7 +532,8 @@ std::size_t  Wordnet_DictClass::setSynsetPos(const unsigned char *const synsetID
 
     const std::size_t STARTING_POS = SIZE;
     const int len_GLOSS_STR =  strlen( (char *)GLOSS_STR );
-
+    const unsigned char *const singleQuote = (unsigned char *)"'"; // END_EXAMPLE_STR
+    
     std::size_t pos = STARTING_POS;
     if(!pos) { pos = 1; }
     std::size_t FOUND_POS = 1;
@@ -532,7 +544,6 @@ std::size_t  Wordnet_DictClass::setSynsetPos(const unsigned char *const synsetID
         // <Synset id='jpn-1.1-XXXXXXXX-a' baseConcept='3'>    
         pos+= 12; // Skip past delim char "'";
 //        if( (FOUND_POS = KanjiInfoClass::searchStr( synsetID, END_LEXICON_ENTRY_STR, pos )) ) 
-const unsigned char *const singleQuote = (unsigned char *)"'"; // END_EXAMPLE_STR
         if( (FOUND_POS = KanjiInfoClass::searchStr( synsetID, singleQuote, pos )) ) 
         {
             // Pos of synsetID ( NUMBER_ONLY )
@@ -568,6 +579,7 @@ std::vector<ustring> Wordnet_DictClass::examples() const
     std::vector<ustring> retExamples;
     unsigned char buff[320];
     const int len_EXAMPLE_STR = strlen( (char *)EXAMPLE_STR);
+
     std::size_t pos = savedSynset;
     
     while( (pos = KanjiInfoClass::searchStr( EXAMPLE_STR, END_SYNSET_TAG, pos )) )
@@ -932,11 +944,26 @@ std::vector<ustring> synsetIdWrittenForm(Wordnet_DictClass &WN)
 // Arg3: number of sentences to grab ( if avalaible )
 std::vector<ustring> getExampleSentences(const Wordnet_DictClass &WN,
                                          const unsigned char *const term,
-                                         const  int n)
+                                         const  int n,
+                                         std::vector<ustring> examplesAlreadyAdded )
 {
     std::vector<ustring> retSentences;
     if( !term || n <= 0 ) { return retSentences; }
 
+    const unsigned char **alreadyAdded = 0;
+    const int NUM_EXAMPLES_ALREADY_ADDED = examplesAlreadyAdded.size();
+    int LENS_ALREADY_ADDED[ NUM_EXAMPLES_ALREADY_ADDED ];
+    if( NUM_EXAMPLES_ALREADY_ADDED  ) 
+    {
+       alreadyAdded = (const unsigned char**)&examplesAlreadyAdded[0];
+       int len = 0;
+       for(int i =0; i < NUM_EXAMPLES_ALREADY_ADDED; i++) { 
+           len = 0;
+           while( alreadyAdded[i][len] ) { len++; }
+           
+           LENS_ALREADY_ADDED[ i ] = len;
+       }
+    }
 
     int numSentenceCollected = 0;
     const unsigned char *const exampleSentenceStr = (unsigned char *)"<Statement example=\"";
@@ -955,9 +982,32 @@ std::vector<ustring> getExampleSentences(const Wordnet_DictClass &WN,
                         pos
                       );
             
-            retSentences.push_back( buff );
+            int numExamplesNotMatching = 0;
+            for( int i =0, LENGTH, len; numExamplesNotMatching < NUM_EXAMPLES_ALREADY_ADDED; numExamplesNotMatching++ ) {
+                
+                LENGTH = 0;
+                while( buff[ LENGTH ] ) { LENGTH++; }
+                
+                if( LENGTH ==  LENS_ALREADY_ADDED[ i ] ) {
+
+                    // Possible match, test; 
+                    for( len=0; len < LENGTH; len++) { 
+                        if( buff[ len ] != alreadyAdded[i][len] ) { 
+                            break; 
+                        }
+                    }
+                    
+                    // Break if match found ( DO NOT ADD buff[] )
+                    if( len == LENGTH ) { break; }
+                }  
+            }
             
-            numSentenceCollected++; 
+            if( numExamplesNotMatching == NUM_EXAMPLES_ALREADY_ADDED ) { 
+                
+                // No match found, add here; 
+                retSentences.push_back( buff );
+                numSentenceCollected++; 
+            }
             
             if( numSentenceCollected == n ) { break; }
         }
