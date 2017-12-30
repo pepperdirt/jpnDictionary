@@ -20,9 +20,10 @@ class ParseFileClass {
     public:
             explicit ParseFileClass(const char fName[]);
            ~ParseFileClass();
-           
-           const unsigned char *const getRaw() const { return file; } 
-           std::size_t findPos(const unsigned char [], 
+          
+	   
+           unsigned char *const &getRaw() const { return file; } 
+                                                std::size_t findPos(const unsigned char [], 
                                       const unsigned char endDelim[],
                                       const int paramLen, // 0 == INFINITY
                                       const int searchDirection ) const; // POSITIVE number == backwards search direction

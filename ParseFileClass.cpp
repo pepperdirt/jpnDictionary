@@ -1,11 +1,14 @@
 #include "ParseFileClass.h"
 
-  const char ParseFileClass_VERSION[]= "2.0.1";
+  const char ParseFileClass_VERSION[]= "2.0.1_";
 /*
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-         Latest update 2017/12/07 - Version 2.0.1
+         Latest update 2017/12/07 - Version 2.0.1_
+                    + Updated to comply w/cpp standards
+				    + Cleaning up code;
+	 			    Version 2.0.1
 				    Fixed Bug: doesn't crash for passing nulled string in constructor; 
 				    Version 2.0.0
                                     Modified argList type findPos to accept unsigned chr;
@@ -81,7 +84,6 @@ std::size_t ParseFileClass::findPos(const unsigned char paramSearchString[],
     }
 
     // creates unsigned copy of endDelim;
-    unsigned int count = 0;; 
     int delimLen = 0; while( endDelimString[ delimLen ] ) { delimLen++; }
 
     std::size_t pos = ptrPosition;
@@ -121,24 +123,24 @@ std::size_t ParseFileClass::getLine(unsigned char retStr[],
     if( !retStr || ptrPosition == fileLength ) { return 0; } // bounds check
 
     // creates unsigned copy of endStr;
-    std::size_t count=0; while( endString[count] ) { count++; }
-    unsigned char endStr[ count+1 ];
-    for(int i=0; endString[i]; i++) { endStr[i] = endString[i]; }
-    endStr[ count ] = '\0';
-
-    std::size_t endStrLen = 0;
-    while(endStr[endStrLen]) { endStrLen++; }
+    int END_STR_LENGHT= strlen((char *)endString );
+    const int MAX_ENDSTR = 254;
+    unsigned char endStr[ MAX_ENDSTR+1 ];
+    int l=0;
+    for( l=0; l < MAX_ENDSTR && l < END_STR_LENGHT; l++) { endStr[l] = endString[l]; }
+    endStr[ l ] = '\0';
+    END_STR_LENGHT  = l;
 
     retStr[0]='\0';
-    
-    std::size_t i=0;
+   
+    std::size_t i = 0; 
     int match =0;
-    while( i < len && i+ptrPosition <= fileLength - endStrLen ) {
-        while(match < endStrLen ) { 
+    while( i < len && i+ptrPosition <= fileLength - END_STR_LENGHT ) {
+        while(match < END_STR_LENGHT ) { 
             if( file[i+ptrPosition+match] == endStr[match] ) { match++; }
             else  { break; }
         }
-        if( match!=0 && match == endStrLen ) { ptrPosition+= match; break; }  // breaks if terminating string is found.   
+        if( match!=0 && match == END_STR_LENGHT ) { ptrPosition+= match; break; }  // breaks if terminating string is found.   
         retStr[i] = file[i+ptrPosition];
 
         i++;
@@ -148,7 +150,7 @@ std::size_t ParseFileClass::getLine(unsigned char retStr[],
 
     ptrPosition+= i;
 
-    if( match!=0 && match==endStrLen ) return ptrPosition;
+    if( match!=0 && match==END_STR_LENGHT ) { return ptrPosition; }
     if( ptrPosition == fileLength ) { return 0; }
     return ptrPosition;        
 }
@@ -165,19 +167,19 @@ std::size_t ParseFileClass::getLineMultDeliminators(unsigned char retStr[],
     if( !retStr || ptrPosition == fileLength ) { return 0; } // bounds check
 
     // creates unsigned copy of endStr;
-    std::size_t count = 0;while( endString[count] ) { count++; }
-    unsigned char endStr[ count+1 ];
-    for(int i=0; endString[i]; i++) { endStr[i] = endString[i]; }
+    int count = 0;while( endString[count] ) { count++; }
+    const int ENDSTR_MAX = 254;
+    unsigned char endStr[ ENDSTR_MAX+1 ];
+    count = 0;
+    for( ; count < ENDSTR_MAX && endString[count]; count++) { endStr[count] = endString[count]; }
     endStr[ count ] = '\0';
 
-    std::size_t endStrLen = 0;
-    while(endStr[endStrLen]) { endStrLen++; }
-    if( endStrLen == 0 ) { endStrLen++; } // 1 char even when it == '\0';
+    std::size_t endStrLen = count;
 
     retStr[0]='\0';
     
     std::size_t i=0;
-    int match =0;
+    unsigned int match =0;
     while( i < len && i+ptrPosition <= fileLength - 1 ) {  // - endStrLen ) {
         while(match < endStrLen ) { 
             if( file[i+ptrPosition ] == endStr[match] ) { break; } // increments every time not hit;

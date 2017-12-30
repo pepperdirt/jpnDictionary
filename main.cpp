@@ -14,6 +14,7 @@
  * github:	github.com/pepperdirt
  *
 	-Last Updated:2017/12/10  - Version 0.0.2 + need test memcmp
+	                            + All source is revised to match cpp standards. 
 	                            + Synsets returns first synsets encounterd .
 	                            + Improved Example Sentences ( almost gaurunteed 
 	                              to return an example sentence. 
@@ -65,8 +66,6 @@ std::size_t largestSize(std::vector<std::size_t> begOff,
 
 int main(const int argc, const char **const argv) {
 
-    int doAnything = 0; // Commands for outputing to screen
-                        // If none, at least define term ( if provided )
     const char * WORDNET_DB = "jpn_wn_lmf.xml";
 
 
@@ -84,10 +83,10 @@ int main(const int argc, const char **const argv) {
     int define = 0; // Define Term?
     if( switchIndexes[ H_help ]    ) { help(); return 0; }
     if( switchIndexes[ V_version ] ) { version(argv); return 0; }
-    int sentences = 0; // Random sentences, no format specified
+    unsigned int sentences = 0; // Random sentences, no format specified
     int synonym   = 0; // Num synonyms to list;
     const unsigned char *term;
-    const unsigned char HEADER[4]= { 0xEF, 0xBB, 0xBF, 0x00 };
+    // const unsigned char HEADER[4]= { 0xEF, 0xBB, 0xBF, 0x00 };
     
     // USER INPUT
     term = (unsigned char *)*(argv+argc-1); // Last value MUST BE term;
@@ -161,7 +160,6 @@ int main(const int argc, const char **const argv) {
         std::cout << "term( "<<term<<" ) not found.\n";
         return 1;
     } 
-    std::size_t INDEX_OF_TERM = Wordnet.getIndex();  // Term ids
     // synsetIDs are the similar terms(IDs) matching term; 
     std::vector<ustring> synsetIDs = Wordnet.synset();    
     std::vector<ustring> lexiconIds = Wordnet.lexiconID(); 
@@ -169,8 +167,7 @@ int main(const int argc, const char **const argv) {
 
     const unsigned char **holdSynsetIDs;
     if( synsetIDs.size() ) { holdSynsetIDs = (const unsigned char**)&synsetIDs[0];}
-    int holdSynsetID_Index = 0;
-    int currentIndex = 0;
+    std::size_t holdSynsetID_Index = 0;
     
     // Print the first synsetID( snynset ) w/a definition
     if( define ) { 
@@ -186,7 +183,7 @@ int main(const int argc, const char **const argv) {
             std::vector<ustring> SynsetId = Wordnet.synRealtions();
             const unsigned char**ccc = (const unsigned char**)&SynsetId[0];
             
-            for(int a = 0; a < SynsetId.size(); a++) 
+            for(std::size_t a = 0; a < SynsetId.size(); a++) 
             {
                 Wordnet.setSynsetPos( ccc[ a ]  );
                 if( Wordnet.defineSynset( buff ) == 0 ) { 
@@ -209,7 +206,7 @@ int main(const int argc, const char **const argv) {
     std::vector<ustring> exmapleSentences;
     if( sentences ) { 
 
-            for(int synIndex = 0, sentenceGrabbed = 0, synsetSIZE = synsetIDs.size(), SENTENCES_LEFT_TO_GRAB = sentences; 
+            for(unsigned int synIndex = 0, sentenceGrabbed = 0, synsetSIZE = synsetIDs.size(), SENTENCES_LEFT_TO_GRAB = sentences; 
                     sentenceGrabbed < sentences &&
                     synIndex < synsetSIZE; 
                         synIndex++, SENTENCES_LEFT_TO_GRAB = sentences - sentenceGrabbed 
@@ -222,7 +219,7 @@ int main(const int argc, const char **const argv) {
                     
                     // Check against num left; Don't grab more
                     // Sentences than needed. 
-                    int examplesSentencesToPUSH_BACK = retExamples.size();
+                    unsigned int examplesSentencesToPUSH_BACK = retExamples.size();
                     if( examplesSentencesToPUSH_BACK > SENTENCES_LEFT_TO_GRAB ) 
                     {
                         examplesSentencesToPUSH_BACK = SENTENCES_LEFT_TO_GRAB; 
@@ -230,7 +227,7 @@ int main(const int argc, const char **const argv) {
                     
                     // Counter through returned Examples adding to examples();
                     // Every iteration in this loop adds to sentencesGrabbed; 
-                    for(int sentenceCounter=0;
+                    for(unsigned int sentenceCounter=0;
                             sentenceCounter < examplesSentencesToPUSH_BACK; 
                                 sentenceCounter++, sentenceGrabbed++
                        )
@@ -256,7 +253,7 @@ int main(const int argc, const char **const argv) {
             
             if( exmapleSentences.size() ) { 
                 std::cout << "Sentences: \n";
-                for(int j=0;j < sentences&& j< exmapleSentences.size();j++) { 
+                for(unsigned int j=0;j < sentences&& j< exmapleSentences.size();j++) { 
                     std::cout << exmapleSentences[j] << std::endl;
                 }
             }
@@ -355,7 +352,7 @@ void numToStr(char *const retStr, const std::size_t i)
     return ;
 }
 std::size_t strToNum(const char *s, const std::size_t index, const int len ) {
-    if( !s || !len || index < 0 ) { return 0; }
+    if( !s || !len ) { return 0; }
 
     std::size_t ret = 0;
     std::size_t mult = 1; 
@@ -466,7 +463,7 @@ std::vector<std::size_t> posOfKanji(ParseFileClass &FILE,
     std::size_t isNextMatchFound = 0;
     const unsigned char endDelim[] = "\0";
     
-    while( isNextMatchFound = FILE.findPos( s, endDelim )  ) {  
+    while( (isNextMatchFound = FILE.findPos( s, endDelim ))  ) {  
         posFound.push_back( isNextMatchFound );
         FILE.setGetPointer(isNextMatchFound+1);
     }
@@ -493,7 +490,6 @@ std::vector<std::size_t> findOffsetFromPos(ParseFileClass &FILE,
     if( searchDirection ) { sign = -1; } 
 
     std::vector<std::size_t> posFound;
-    std::size_t isNextMatchFound = 0;
     std::size_t counter = 0;
     const std::size_t S_SIZE = s.size();
     const std::size_t SIZE = pos.size();

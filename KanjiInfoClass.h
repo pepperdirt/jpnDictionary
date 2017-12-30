@@ -3,10 +3,10 @@
 #include <fstream>
 #include <vector>
 #include <string>
-#include "ParseFileClass.cpp" // Version 2.0.1; 
+#include "ParseFileClass.cpp" // Version 2.0.1_; 
 
 
-  const char KanjiInfoClass_VERSION[]= "1.0.0";
+  const char KanjiInfoClass_VERSION[]= "1.0.1_";
 
 namespace unsigned_types { 
     typedef std::basic_string<unsigned char> ustring;
@@ -39,7 +39,7 @@ class KanjiInfoClass {
                                                       if( keyTable.size() )
                                                           keyTable.push_back( 0 );  
                                                       }
-           const unsigned char *const getDB() const { return DB->getRaw(); }
+           unsigned char *const &getDB() const { return DB->getRaw(); }
            
            std::size_t searchStr(const unsigned char *str
                                  , const std::size_t beg = 0
