@@ -73,7 +73,8 @@ class Wordnet_DictClass: public KanjiInfoClass {
            std::size_t  setSynsetPos(const unsigned char *const synsetID);
            void setSynsetPos(const std::size_t i) { if(i&&i<fileLen()){ savedSynset = i;} }
            std::size_t getSynsetPos() const { return savedSynset; }
-           int  defineSynset(unsigned char *ret) const; // 0-on-success;
+           void synsetGrammarNote(unsigned char *) const; 
+           int defineSynset(unsigned char *ret) const; // 0-on-success;
            std::vector<ustring> examples() const;
            std::vector<ustring> synRealtions() const;
            std::vector<ustring> synRealtionTypes() const;
@@ -91,12 +92,6 @@ class Wordnet_DictClass: public KanjiInfoClass {
 //           void fillKeyTable(); 
 };
 
-
-
-void func(Wordnet_DictClass &term) {
- term.onyomi();
- std::cout << "do something" << std::endl;
-}
 
 } // NAMESPACE
 

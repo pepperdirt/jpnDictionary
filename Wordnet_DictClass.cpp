@@ -74,15 +74,14 @@ Definitions of term / Example sentences of term;
 //namespace wordnetDB { 
 namespace kanjiDB { 
 
-  const char Wordnet_DictClass_VERSION[]= "1.0.1_a";
+  const char Wordnet_DictClass_VERSION[]= "1.0.1_";
 /*
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
          Latest update 2017/12/27 - Version 1.0.1_a
-	 			    + getExampleSentences
-				    	logic error, buff len ALWAYS = 1 fixed.
-	 		  	  - Version 1.0.1_
+                                    + More functionality.
+                                    + Cleaned up some non-member functions. 
                                     + Code updated to comply w/Cpp Standards.  
                                     + getExampleSentences(?) Feature added:  
                                       - Pass in already added sentences as argument
@@ -539,6 +538,23 @@ std::size_t  Wordnet_DictClass::setSynsetPos(const unsigned char *const synsetID
     return 0;
 }
 
+
+// offset+9 of savedSynset;
+//   <Synset id='jpn-1.1-01211489-n' baseConcept='3'>
+void Wordnet_DictClass::synsetGrammarNote(unsigned char *retVal) const
+{
+    retVal[0] = '\0';
+    
+
+    const unsigned char *const END_quote = (unsigned char *)"'";
+    std::size_t pos = savedSynset;
+    
+    
+    KanjiInfoClass::readStr( retVal, 
+                             KanjiInfoClass::searchStr(END_quote, savedSynset+9) - savedSynset+9, // SIZE
+                             savedSynset+9 );
+    return ;    
+}
 // Then find if a match to synsetID; 
 int Wordnet_DictClass::defineSynset(unsigned char *retVal) const
 {
@@ -819,25 +835,39 @@ std::vector<ustring> synsetIdWrittenForm(Wordnet_DictClass &WN)
     return retWrittenForm;    
 }
 
+
+
 // Helper function, returns sentences containing term;
-// Arg1: this
-// Arg2: term to use when searching for sentences
-// Arg3: number of sentences to grab ( if avalaible )
-std::vector<ustring> getExampleSentences(const Wordnet_DictClass &WN,
+// Arg1: retValue - positions of ID(NUM_ONLY) and Sentence pairs.
+// Arg2: this
+// Arg3: term to use when searching for sentences
+// Arg4: tag to search for within SYNSET tag "<SYNSET"
+// Arg5: ending delim string for Arg4.
+// Arg6: number of sentences to grab ( if avalaible )
+// Arg7: example sentences already added. 
+void getExampleSentences_getPositions(   std::size_t *retPos,
+                                         const Wordnet_DictClass &WN,
                                          const unsigned char *const term,
-                                         const  int n,
+                                         const unsigned char *const tagInsideSynset,
+                                         const unsigned char *const tagInsideSynsetEnd,
+                                         const int &nsize,
                                          std::vector<ustring> examplesAlreadyAdded )
 {
+    retPos[0] = 0; retPos[1] = 0; retPos[2] = 0; // ending delim;
+    int retPosIndex = 0;
+    
+    // retPos max will be third of MAX_SIZE; ( holds synID / sentence Position pairs / sentencePositionIndex_WITHIN_synID );
     const int examplesAlreadyAdded_MAX_SIZE = 254;
-    std::vector<ustring> retSentences;
-    if( !term || n <= 0 ) { return retSentences; }
+    const int RETPOS_SIZE_ALLOCATED = examplesAlreadyAdded_MAX_SIZE / 3; 
+
+    if( !term || nsize <= 0 ) { return ; }
 
     const unsigned char **alreadyAdded = 0;
     const int NUM_EXAMPLES_ALREADY_ADDED = examplesAlreadyAdded.size();
     int NUM_EXAMPLES_ALREADY_ADDED_LEN = NUM_EXAMPLES_ALREADY_ADDED;
     if( NUM_EXAMPLES_ALREADY_ADDED_LEN > examplesAlreadyAdded_MAX_SIZE )
         NUM_EXAMPLES_ALREADY_ADDED_LEN = examplesAlreadyAdded_MAX_SIZE; 
-    int LENS_ALREADY_ADDED[ examplesAlreadyAdded_MAX_SIZE + 1 ];
+    int LENS_ALREADY_ADDED[ +1 ];
     if( NUM_EXAMPLES_ALREADY_ADDED_LEN  ) 
     {
        alreadyAdded = (const unsigned char**)&examplesAlreadyAdded[0];
@@ -851,95 +881,242 @@ std::vector<ustring> getExampleSentences(const Wordnet_DictClass &WN,
     }
 
     int numSentenceCollected = 0;
-    const unsigned char *const exampleSentenceStr = (unsigned char *)"<Statement example=\"";
-    const int lenExampleSentenceStr = strlen( (char *)exampleSentenceStr );
-    const unsigned char *const exampleEnd = (unsigned char *)"\"";
+
+    const int NEAR_PTR_SYNID_NUM_ONLY = 20;
+    const unsigned char *const SYNSET_TAG = (unsigned char *)"<Synset id";    
+    const int lenTagInsideSynset = strlen( (char *)tagInsideSynset ); // 
+    const unsigned char *const END_SYNSET_TAG = (unsigned char *)"</Synset>";
     
     unsigned char buff[320];
-    std::size_t pos = 1;
-    while( (pos = WN.searchStr( exampleSentenceStr, pos ) )) { 
-        pos += lenExampleSentenceStr;
-        
-        // If term found in example str, Add to retSentences;
-        if( WN.searchStr( term, exampleEnd, pos ) ) {
-            WN.readStr( buff,
-                        WN.searchStr( exampleEnd, pos ) - pos, // length;
-                        pos
-                      );
-            
-            int numExamplesNotMatching = 0;
-            for( int i =0, LENGTH, len; numExamplesNotMatching < NUM_EXAMPLES_ALREADY_ADDED_LEN; numExamplesNotMatching++ ) {
-                
-                LENGTH = 0;
-                while( buff[ LENGTH ] ) { LENGTH++; }
-                
-                if( LENGTH ==  LENS_ALREADY_ADDED[ i ] ) {
+    std::size_t pos = WN.searchStr( SYNSET_TAG, 1 ); // Starting sysnet def/example; 
+    std::size_t synid_pos = pos; // stores synid pos; 
 
-                    // Possible match, test; 
-                    for( len=0; len < LENGTH; len++) { 
-                        if( buff[ len ] != alreadyAdded[i][len] ) { 
-                            break; 
-                        }
-                    }
-                    
-                    // Break if match found ( DO NOT ADD buff[] )
-                    if( len == LENGTH ) { break; }
-                }  
-            }
+
+    while( (synid_pos = WN.searchStr( SYNSET_TAG, synid_pos ) )) { 
+        synid_pos += NEAR_PTR_SYNID_NUM_ONLY; 
+        pos = synid_pos;
+        
+        // May be mutiple Examples; Test for all of them to add. 
+        int indexWithinSynsetTag = 0;
+        while( (pos = WN.searchStr( tagInsideSynset, END_SYNSET_TAG, pos ) )) { 
+            pos += lenTagInsideSynset;
             
-            if( numExamplesNotMatching == NUM_EXAMPLES_ALREADY_ADDED_LEN ) { 
+            // If term found in example str, Add to retSentences;
+            if( WN.searchStr( term, tagInsideSynsetEnd, pos ) ) {
+                WN.readStr( buff,
+                            WN.searchStr( tagInsideSynsetEnd, pos ) - pos, // length;
+                            pos
+                          );
                 
-                // No match found, add here; 
-                retSentences.push_back( buff );
-                numSentenceCollected++; 
-            }
-            
-            if( numSentenceCollected == n ) { break; }
-        }
-    }
+                int numExamplesNotMatching = 0;
+                for( int i =0, LENGTH, len; numExamplesNotMatching < NUM_EXAMPLES_ALREADY_ADDED_LEN; numExamplesNotMatching++ ) {
+                    
+                    LENGTH = 0;
+                    while( buff[ LENGTH ] ) { LENGTH++; }
+                    
+                    if( LENGTH ==  LENS_ALREADY_ADDED[ i ] ) {
     
-    return retSentences;
+                        // Possible match, test; 
+                        for( len=0; len < LENGTH; len++) { 
+                            if( buff[ len ] != alreadyAdded[i][len] ) { 
+                                break; 
+                            }
+                        }
+                        
+                        // Break if match found ( DO NOT ADD buff[] )
+                        if( len == LENGTH ) { break; }
+                    }  
+                }
+                
+                if( numExamplesNotMatching == NUM_EXAMPLES_ALREADY_ADDED_LEN ) { 
+                    
+                    // No match found, add here; 
+                    retPos[ retPosIndex   ] = synid_pos;
+                    retPos[ retPosIndex+1 ] = pos; 
+                    retPos[ retPosIndex+2 ] = indexWithinSynsetTag;
+                    retPosIndex += 3; 
+                    
+                    numSentenceCollected++; 
+                }
+                
+                if( numSentenceCollected == nsize || 
+                    numSentenceCollected == RETPOS_SIZE_ALLOCATED ) { break; }
+                    
+                indexWithinSynsetTag++; 
+            }
+        }
+
+        if( numSentenceCollected == nsize || 
+            numSentenceCollected == RETPOS_SIZE_ALLOCATED ) { break; }
+
+    }
+    retPos[ retPosIndex   ] = 0;
+    retPos[ retPosIndex+1 ] = 0;    
+    retPos[ retPosIndex+2 ] = 0;    
+    
+    return ;
 }
 
-// Helper function, returns glosses containing term;
+
+/*
+   Example Setences containing Term:
+               const unsigned char *const EXAMPLE_STR = (unsigned char *)"<Statement example=\"";    
+               const unsigned char *const exampleEnd = (unsigned char *)"\"";
+   Gloss Sentences containing Term:
+               const unsigned char *const exampleSentenceStr = (unsigned char *)"<Definition gloss=\"";
+               const unsigned char *const exampleEnd = (unsigned char *)"\"";
+
+   can also grab these w/caareful 'term'(arg2) manipulation.
+              <SynsetRelations>
+                 <SynsetRelation targets='jpn-1.1-01785180-a' relType='sim'/>
+              </SynsetRelations>
+   
+*/
+
+// Helper function, returns sentences containing term;
 // Arg1: this
-// Arg2: term to use when searching for in glosses
-// Arg3: number of sentences to grab ( if avalaible )
-std::vector<ustring> getGlossSentences(const Wordnet_DictClass &WN,
+// Arg2: term to use when searching for sentences
+// Arg3: tag to find match ( skips past this string )
+// Arg4: ending string (after Arg3);
+// Arg5: number of sentences to grab ( if avalaible )
+// Arg6: example sentences already added. 
+std::vector<ustring> getStringsMatchingTermInsideTag(const Wordnet_DictClass &WN,
                                          const unsigned char *const term,
-                                         const  int n)
+                                         const unsigned char *const begTagStr,
+                                         const unsigned char *const endBegTagStr,
+                                         const int &n,
+                                         std::vector<ustring> examplesAlreadyAdded )
 {
+    const int examplesAlreadyAdded_MAX_SIZE = 254;
     std::vector<ustring> retSentences;
     if( !term || n <= 0 ) { return retSentences; }
-
-
-    int numSentenceCollected = 0;
-    const unsigned char *const exampleSentenceStr = (unsigned char *)"<Definition gloss=\"";
-    const int lenExampleSentenceStr = strlen( (char *)exampleSentenceStr );
-    const unsigned char *const exampleEnd = (unsigned char *)"\"";
     
-    unsigned char buff[320];
+    const int synID_Example_Position_Pairs_SIZE = examplesAlreadyAdded_MAX_SIZE;
+    std::size_t synID_Example_Position_Pairs[ examplesAlreadyAdded_MAX_SIZE + 1 ];
+
+    getExampleSentences_getPositions( synID_Example_Position_Pairs,
+                                      WN,
+                                      term,
+                                      begTagStr,
+                                      endBegTagStr,
+                                      n,
+                                      examplesAlreadyAdded
+                                    );  
+
+    unsigned char buff[255]; // Possible buffer overrun. Sentence MUST NOT exceed 255; 
     std::size_t pos = 1;
-    while( (pos = WN.searchStr( exampleSentenceStr, pos ) )) { 
-        pos += lenExampleSentenceStr;
+    int i =0;
+
+    while( synID_Example_Position_Pairs[ i ] ) 
+    { 
+        WN.readStr( buff,
+                    WN.searchStr( endBegTagStr, synID_Example_Position_Pairs[ i+1 ] ) 
+                       - synID_Example_Position_Pairs[ i+1 ], // length;
+                    synID_Example_Position_Pairs[ i+1 ]
+                  );
+        retSentences.push_back( buff );
         
-        // If term found in example str, Add to retSentences;
-        if( WN.searchStr( term, exampleEnd, pos ) ) {
-            WN.readStr( buff,
-                        WN.searchStr( exampleEnd, pos ) - pos, // length;
-                        pos
-                      );
-            
-            retSentences.push_back( buff );
-            
-            numSentenceCollected++; 
-            
-            if( numSentenceCollected == n ) { break; }
-        }
+        i+=3;
     }
     
     return retSentences;
 }
+
+
+
+// Helper function, returns sentences containing term;
+// Arg1: this
+// Arg2: term to use when searching for sentences
+// Arg3: number of sentences to grab ( if avalaible )
+// Arg4: example sentences already added. 
+std::vector<ustring> getExampleSentences(const Wordnet_DictClass &WN,
+                                         const unsigned char *const term,
+                                         const int &n,
+                                         std::vector<ustring> examplesAlreadyAdded )
+{
+    const int examplesAlreadyAdded_MAX_SIZE = 254;
+    std::vector<ustring> retSentences;
+    if( !term || n <= 0 ) { return retSentences; }
+    
+    const int synID_Example_Position_Pairs_SIZE = examplesAlreadyAdded_MAX_SIZE;
+    std::size_t synID_Example_Position_Pairs[ examplesAlreadyAdded_MAX_SIZE + 1 ];
+    const unsigned char *const EXAMPLE_STR = (unsigned char *)"<Statement example=\"";    
+    const unsigned char *const exampleEnd = (unsigned char *)"\"";
+
+    getExampleSentences_getPositions( synID_Example_Position_Pairs,
+                                      WN,
+                                      term,
+                                      EXAMPLE_STR,
+                                      exampleEnd,
+                                      n,
+                                      examplesAlreadyAdded
+                                    );  
+
+    unsigned char buff[255]; // Possible buffer overrun. Sentence MUST NOT exceed 255; 
+    std::size_t pos = 1;
+    int i =0;
+    while( synID_Example_Position_Pairs[ i ] ) 
+    { 
+        WN.readStr( buff,
+                    WN.searchStr( exampleEnd, synID_Example_Position_Pairs[ i+1 ] ) 
+                       - synID_Example_Position_Pairs[ i+1 ], // length;
+                    synID_Example_Position_Pairs[ i+1 ]
+                  );
+        retSentences.push_back( buff );
+        
+        i+=3;
+    }
+    
+    return retSentences;
+}
+
+
+// Helper function, returns sentences containing term;
+// Arg1: this
+// Arg2: term to use when searching for sentences
+// Arg3: number of sentences to grab ( if avalaible )
+// Arg4: example sentences already added. 
+std::vector<ustring> getGlossSentences(const Wordnet_DictClass &WN,
+                                         const unsigned char *const term,
+                                         const int &n,
+                                         std::vector<ustring> examplesAlreadyAdded )
+{
+    const int examplesAlreadyAdded_MAX_SIZE = 254;
+    std::vector<ustring> retSentences;
+    if( !term || n <= 0 ) { return retSentences; }
+    
+    const int synID_Example_Position_Pairs_SIZE = examplesAlreadyAdded_MAX_SIZE;
+    std::size_t synID_Example_Position_Pairs[ examplesAlreadyAdded_MAX_SIZE + 1 ];
+    const unsigned char *const definitionStr = (unsigned char *)"<Definition gloss=\"";
+    const unsigned char *const definitionEnd = (unsigned char *)"\"";
+
+    getExampleSentences_getPositions( synID_Example_Position_Pairs,
+                                      WN,
+                                      term,
+                                      definitionStr,
+                                      definitionEnd,
+                                      n,
+                                      examplesAlreadyAdded
+                                    );  
+
+    unsigned char buff[255]; // Possible buffer overrun. Sentence MUST NOT exceed 255; 
+    std::size_t pos = 1;
+    int i =0;
+    while( synID_Example_Position_Pairs[ i ] ) 
+    { 
+        WN.readStr( buff,
+                    WN.searchStr( definitionEnd, synID_Example_Position_Pairs[ i+1 ] ) 
+                       - synID_Example_Position_Pairs[ i+1 ], // length;
+                    synID_Example_Position_Pairs[ i+1 ]
+                  );
+        retSentences.push_back( buff );
+        
+        i+=3;
+    }
+    
+    return retSentences;
+}
+
 
 } // NAMESPACE; 
 
