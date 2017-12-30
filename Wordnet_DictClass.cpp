@@ -74,12 +74,15 @@ Definitions of term / Example sentences of term;
 //namespace wordnetDB { 
 namespace kanjiDB { 
 
-  const char Wordnet_DictClass_VERSION[]= "1.0.1_";
+  const char Wordnet_DictClass_VERSION[]= "1.0.1";
 /*
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-         Latest update 2017/12/27 - Version 1.0.1_a
+         Latest update 2017/12/27 - Version 1.0.1
+                                  - Version 1.0.1_b
+                                    + std::size_t  Wordnet_DictClass::setSynsetPos(const unsigned char *const synsetID)
+                                      fixed logic err. Matches OPTIMIzATION functionality; 
                                     + More functionality.
                                     + Cleaned up some non-member functions. 
                                     + Code updated to comply w/Cpp Standards.  
@@ -547,12 +550,11 @@ void Wordnet_DictClass::synsetGrammarNote(unsigned char *retVal) const
     
 
     const unsigned char *const END_quote = (unsigned char *)"'";
-    std::size_t pos = savedSynset;
     
-    
+    std::size_t pos = savedSynset+9;
     KanjiInfoClass::readStr( retVal, 
-                             KanjiInfoClass::searchStr(END_quote, savedSynset+9) - savedSynset+9, // SIZE
-                             savedSynset+9 );
+                             KanjiInfoClass::searchStr(END_quote, pos) - pos, // SIZE
+                             pos );
     return ;    
 }
 // Then find if a match to synsetID; 

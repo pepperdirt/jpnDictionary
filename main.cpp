@@ -13,7 +13,7 @@
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-	-Last Updated:2017/12/10  - Version 0.0.2a + need test memcmp
+	-Last Updated:2017/12/10  - Version 0.0.2 + need test memcmp
 	                            + Adding parts of speach to definitions. 
 	                            + All source is revised to match cpp standards. 
 	                            + Synsets returns first synsets encounterd .
@@ -26,7 +26,7 @@
   
 */
     enum switch_names { FILE_NAME=0, VERSION_MAJOR=0, VERSION_MINOR=0,VERSION_=2 };
-    const char * const versLetter = "a"; // Letter for in-between releases.
+    const char * const versLetter = "\0"; // Letter for in-between releases.
     enum COMMAND_SWITCHES { 
          D_Define=1, 
          E_EXTRA_SENTENCES=2,
@@ -213,17 +213,19 @@ int main(const int argc, const char **const argv) {
     if( define ) { 
         int numDefined = 0;
         int counter = 1;
-        unsigned char grammarNote[15 ];
+        unsigned char grammarNote[150 ];
         while( numDefined < define && holdSynsetID_Index < synsetIDs.size()) { 
             Wordnet.setSynsetPos( holdSynsetIDs[ holdSynsetID_Index ] );
+            std::vector<ustring> SynsetId = Wordnet.synRealtions();
+            std::vector<ustring> SynTypes = Wordnet.synRealtionTypes();
+
+            // Mods synset Pos; 
             Wordnet.synsetGrammarNote( grammarNote );
             if( Wordnet.defineSynset( buff ) == 0 ) { 
                 std::cout << counter << " ("<<grammarNote<< "). "<< buff << std::endl;
                 numDefined++; counter++;
                 if( numDefined == define ) { break; }
             }            
-            std::vector<ustring> SynsetId = Wordnet.synRealtions();
-            std::vector<ustring> SynTypes = Wordnet.synRealtionTypes();
             const unsigned char**ccc = (const unsigned char**)&SynsetId[0];
             const unsigned char**relType = (const unsigned char**)&SynTypes[0];
             for(std::size_t a = 0; a < SynsetId.size(); a++) 
