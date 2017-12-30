@@ -74,12 +74,15 @@ Definitions of term / Example sentences of term;
 //namespace wordnetDB { 
 namespace kanjiDB { 
 
-  const char Wordnet_DictClass_VERSION[]= "1.0.1_";
+  const char Wordnet_DictClass_VERSION[]= "1.0.1_a";
 /*
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-         Latest update 2017/12/27 - Version 1.0.1_
+         Latest update 2017/12/27 - Version 1.0.1_a
+	 			    + getExampleSentences
+				    	logic error, buff len ALWAYS = 1 fixed.
+	 		  	  - Version 1.0.1_
                                     + Code updated to comply w/Cpp Standards.  
                                     + getExampleSentences(?) Feature added:  
                                       - Pass in already added sentences as argument
@@ -834,7 +837,7 @@ std::vector<ustring> getExampleSentences(const Wordnet_DictClass &WN,
     int NUM_EXAMPLES_ALREADY_ADDED_LEN = NUM_EXAMPLES_ALREADY_ADDED;
     if( NUM_EXAMPLES_ALREADY_ADDED_LEN > examplesAlreadyAdded_MAX_SIZE )
         NUM_EXAMPLES_ALREADY_ADDED_LEN = examplesAlreadyAdded_MAX_SIZE; 
-    int LENS_ALREADY_ADDED[ +1 ];
+    int LENS_ALREADY_ADDED[ examplesAlreadyAdded_MAX_SIZE + 1 ];
     if( NUM_EXAMPLES_ALREADY_ADDED_LEN  ) 
     {
        alreadyAdded = (const unsigned char**)&examplesAlreadyAdded[0];
