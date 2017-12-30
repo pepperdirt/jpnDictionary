@@ -525,7 +525,7 @@ std::size_t  Wordnet_DictClass::setSynsetPos(const unsigned char *const synsetID
     while( (pos = KanjiInfoClass::searchStr( SYNSET_TAG, pos )) ) 
     {
         // <Synset id='jpn-1.1-XXXXXXXX-a' baseConcept='3'>    
-        pos+= 12; // Skip past delim char "'";
+        pos+= 20; // Match OPTIMIZED Wordnet, position to Start of ID(NUM ONLY); 
 //        if( (FOUND_POS = KanjiInfoClass::searchStr( synsetID, END_LEXICON_ENTRY_STR, pos )) ) 
         if( (FOUND_POS = KanjiInfoClass::searchStr( synsetID, singleQuote, pos )) ) 
         {
