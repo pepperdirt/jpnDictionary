@@ -1031,10 +1031,15 @@ std::vector<ustring> getStringsMatchingTermInsideTag(const Wordnet_DictClass &WN
 // Arg2: term to use when searching for sentences
 // Arg3: number of sentences to grab ( if avalaible )
 // Arg4: example sentences already added. 
+// Arg5: 3 data sets possible to grab 
+//       - Synid(NUM ONLY)
+//       - gloss setnences
+//       - ?
 std::vector<ustring> getExampleSentences(const Wordnet_DictClass &WN,
                                          const unsigned char *const term,
                                          const int &n,
-                                         std::vector<ustring> examplesAlreadyAdded )
+                                         std::vector<ustring> examplesAlreadyAdded,
+                                         const int GRAB_DATASET_NUMBER = 1)
 {
     const int examplesAlreadyAdded_MAX_SIZE = 254;
     std::vector<ustring> retSentences;
@@ -1056,14 +1061,46 @@ std::vector<ustring> getExampleSentences(const Wordnet_DictClass &WN,
 
     unsigned char buff[255]; // Possible buffer overrun. Sentence MUST NOT exceed 255; 
     std::size_t pos = 1;
-    int i =0;
+    int i =0, k;
     while( synID_Example_Position_Pairs[ i ] ) 
     { 
-        WN.readStr( buff,
-                    WN.searchStr( exampleEnd, synID_Example_Position_Pairs[ i+1 ] ) 
-                       - synID_Example_Position_Pairs[ i+1 ], // length;
-                    synID_Example_Position_Pairs[ i+1 ]
-                  );
+        if( GRAB_DATASET_NUMBER == 1 ) { // i+1  
+            WN.readStr( buff,
+                        WN.searchStr( exampleEnd, synID_Example_Position_Pairs[ i+GRAB_DATASET_NUMBER ] ) 
+                           - synID_Example_Position_Pairs[ i+GRAB_DATASET_NUMBER ], // length;
+                        synID_Example_Position_Pairs[ i+GRAB_DATASET_NUMBER ]
+                      );
+        } 
+        else if( GRAB_DATASET_NUMBER == 0 ) 
+            WN.readStr( buff, 
+                        8,
+                        synID_Example_Position_Pairs[ i+GRAB_DATASET_NUMBER ]
+                      );  
+        else if( GRAB_DATASET_NUMBER == 2 ) 
+        {
+           std::size_t number = synID_Example_Position_Pairs[ i+GRAB_DATASET_NUMBER ];
+           // CPY + PASTE; 
+                
+                std::size_t len = 0;
+                std::size_t mult = 1;
+                while( mult ==1 || mult <= number ) { mult *= 10; len++; }
+                if( len == 0 ) { 
+                    buff[0]=0x30; buff[1]='\0';  
+                }
+                else 
+                {
+                    mult /= 10;
+                    
+                    std::size_t copyI = synID_Example_Position_Pairs[ i+GRAB_DATASET_NUMBER ];
+                    for(unsigned int c=0, num=0; c < len-1; c++, mult /= 10) {
+                        num = (copyI / mult );
+                        copyI -=  (num * mult );
+                        buff[c] = num + 0x30;
+                    }
+                    buff[len-1] = (0x30+(number%10));
+                    buff[len ] = '\0';
+                }                         
+        }
         retSentences.push_back( buff );
         
         i+=3;
@@ -1078,10 +1115,15 @@ std::vector<ustring> getExampleSentences(const Wordnet_DictClass &WN,
 // Arg2: term to use when searching for sentences
 // Arg3: number of sentences to grab ( if avalaible )
 // Arg4: example sentences already added. 
+// Arg5: 3 data sets possible to grab 
+//       - Synid(NUM ONLY)
+//       - gloss setnences
+//       - ?
 std::vector<ustring> getGlossSentences(const Wordnet_DictClass &WN,
                                          const unsigned char *const term,
                                          const int &n,
-                                         std::vector<ustring> examplesAlreadyAdded )
+                                         std::vector<ustring> examplesAlreadyAdded,
+                                         const int GRAB_DATASET_NUMBER = 1)
 {
     const int examplesAlreadyAdded_MAX_SIZE = 254;
     std::vector<ustring> retSentences;
@@ -1103,14 +1145,46 @@ std::vector<ustring> getGlossSentences(const Wordnet_DictClass &WN,
 
     unsigned char buff[255]; // Possible buffer overrun. Sentence MUST NOT exceed 255; 
     std::size_t pos = 1;
-    int i =0;
+    int i =0, k=0;
     while( synID_Example_Position_Pairs[ i ] ) 
     { 
-        WN.readStr( buff,
-                    WN.searchStr( definitionEnd, synID_Example_Position_Pairs[ i+1 ] ) 
-                       - synID_Example_Position_Pairs[ i+1 ], // length;
-                    synID_Example_Position_Pairs[ i+1 ]
-                  );
+        if( GRAB_DATASET_NUMBER == 1 ) { // i+1  
+            WN.readStr( buff,
+                        WN.searchStr( definitionEnd, synID_Example_Position_Pairs[ i+1 ] ) 
+                           - synID_Example_Position_Pairs[ i+1 ], // length;
+                        synID_Example_Position_Pairs[ i+1 ]
+                      );
+        } 
+        else if( GRAB_DATASET_NUMBER == 0 ) 
+            WN.readStr( buff, 
+                        8,
+                        synID_Example_Position_Pairs[ i+GRAB_DATASET_NUMBER ]
+                      );  
+        else if( GRAB_DATASET_NUMBER == 2 ) 
+        {
+           std::size_t number = synID_Example_Position_Pairs[ i+GRAB_DATASET_NUMBER ];
+           // CPY + PASTE; 
+                
+                std::size_t len = 0;
+                std::size_t mult = 1;
+                while( mult ==1 || mult <= number ) { mult *= 10; len++; }
+                if( len == 0 ) { 
+                    buff[0]=0x30; buff[1]='\0';  
+                }
+                else 
+                {
+                    mult /= 10;
+                    
+                    std::size_t copyI = synID_Example_Position_Pairs[ i+GRAB_DATASET_NUMBER ];
+                    for(unsigned int c=0, num=0; c < len-1; c++, mult /= 10) {
+                        num = (copyI / mult );
+                        copyI -=  (num * mult );
+                        buff[c] = num + 0x30;
+                    }
+                    buff[len-1] = (0x30+(number%10));
+                    buff[len ] = '\0';
+                }                         
+        }
         retSentences.push_back( buff );
         
         i+=3;

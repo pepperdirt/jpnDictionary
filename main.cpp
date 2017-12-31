@@ -13,7 +13,8 @@
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-	-Last Updated:2017/12/10  - Version 0.0.2_a
+	-Last Updated:2017/12/10  - Version 0.1.0
+                                + English translations added. 
 	                            + Ready to start implementing Eng code lookup
                               - Version 0.0.2 + need test memcmp
 	                            + Adding parts of speach to definitions. 
@@ -27,8 +28,8 @@
 	                            Version 
   
 */
-    enum switch_names { FILE_NAME=0, VERSION_MAJOR=0, VERSION_MINOR=0,VERSION_=2 };
-    const char * const versLetter = "a"; // Letter for in-between releases.
+    enum switch_names { FILE_NAME=0, VERSION_MAJOR=0, VERSION_MINOR=1,VERSION_=0 };
+    const char * const versLetter = "\0"; // Letter for in-between releases.
     enum COMMAND_SWITCHES { 
          D_Define=1, 
          E_EXTRA_SENTENCES=2,
@@ -69,7 +70,7 @@ std::vector<std::size_t> findOffsetFromPos(ParseFileClass &FILE,
                                            int searchDirection = 0);
 std::size_t largestSize(std::vector<std::size_t> begOff,
                         std::vector<std::size_t> endOff );
-
+void getDefString( ParseFileClass &WORDNET_DEF, unsigned char *buff, const unsigned char *synID_Number, const int synNum );
 int main(const int argc, const char **const argv) {
 
     const char * WORDNET_DB  = "jpn_wn_lmf.xml";
@@ -114,18 +115,21 @@ int main(const int argc, const char **const argv) {
         {  
             // If not number, must be the 3-letter lang code.
             defineLANG_CODE = argv[switchIndexes[ D_Define ]];
-            
+//std::cout << "!define; ";
+//std::cout << "argv("<<argv[switchIndexes[ D_Define ]+1] << ")["<<switchIndexes[ D_Define ]+1<<"]; ";
+
             // Optional 3-letter MAY be supplied. 
             // Try finding a number in NEXT index.
             define = strToNum(
-                                argv[switchIndexes[ D_Define+1 ]],
+                                argv[switchIndexes[ D_Define ]+1],
                                 0,
                                 strNumlen( 
-                                            argv[switchIndexes[ D_Define+1 ]],
+                                            argv[switchIndexes[ D_Define ]+1],
                                             0
                                          )
                              );
         }
+//std::cout << "define("<< define<<"); ";
         if(!define) { define = 1; }
     }
 
@@ -148,10 +152,10 @@ int main(const int argc, const char **const argv) {
             // Optional 3-letter MAY be supplied. 
             // Try finding a number in NEXT index.
             sentences = strToNum(
-                                    argv[switchIndexes[ E_EXTRA_SENTENCES+1 ]],
+                                    argv[switchIndexes[ E_EXTRA_SENTENCES]+1],
                                     0,
                                     strNumlen( 
-                                                argv[switchIndexes[ E_EXTRA_SENTENCES+1 ]],
+                                                argv[switchIndexes[ E_EXTRA_SENTENCES]+1],
                                                 0
                                              )
                                  );
@@ -256,7 +260,6 @@ int main(const int argc, const char **const argv) {
     std::vector<ustring> synsetIDs = Wordnet.synset();    
     std::vector<ustring> lexiconIds = Wordnet.lexiconID(); 
 
-
     const unsigned char **holdSynsetIDs;
     if( synsetIDs.size() ) { holdSynsetIDs = (const unsigned char**)&synsetIDs[0];}
     std::size_t holdSynsetID_Index = 0;
@@ -264,9 +267,9 @@ int main(const int argc, const char **const argv) {
     // Print the first synsetID( snynset ) w/a definition
     if( define ) { 
         int numDefined = 0;
-        int counter = 1;
         unsigned char grammarNote[150 ];
         while( numDefined < define && holdSynsetID_Index < synsetIDs.size()) { 
+            int counter = 0;
             Wordnet.setSynsetPos( holdSynsetIDs[ holdSynsetID_Index ] );
             std::vector<ustring> SynsetId = Wordnet.synRealtions();
             std::vector<ustring> SynTypes = Wordnet.synRealtionTypes();
@@ -274,19 +277,39 @@ int main(const int argc, const char **const argv) {
             // Mods synset Pos; 
             Wordnet.synsetGrammarNote( grammarNote );
             if( Wordnet.defineSynset( buff ) == 0 ) { 
-                std::cout << counter << " ("<<grammarNote<< "). "<< buff << std::endl;
+                if( !defineLANG_CODE ) 
+                    std::cout << numDefined+1 << " ("<<grammarNote<< "). "<< buff << std::endl;
+                    
                 numDefined++; counter++;
-                if( numDefined == define ) { break; }
+                if( numDefined == define ) 
+                {
+                    if( defineLANG_CODE ) { 
+                        getDefString( WORDNET_DEF, buff, holdSynsetIDs[  holdSynsetID_Index ], counter  );
+                        std::cout << numDefined+1-1 << " ("<<grammarNote<<"). "<< buff << std::endl;
+                    } 
+                    break; 
+                }
             }            
+            
             const unsigned char**ccc = (const unsigned char**)&SynsetId[0];
             const unsigned char**relType = (const unsigned char**)&SynTypes[0];
             for(std::size_t a = 0; a < SynsetId.size(); a++) 
             {
+                counter = 0;
                 Wordnet.setSynsetPos( ccc[ a ]  );
                 if( Wordnet.defineSynset( buff ) == 0 ) { 
-                    std::cout << counter << " ("<<relType[a] << "). "<< buff << std::endl;
+                    if( !defineLANG_CODE ) 
+                        std::cout << numDefined+1 << " ("<<relType[a] << "). "<< buff << std::endl;
                     numDefined++; counter++;
-                    if( numDefined == define ) { break; }
+                    if( numDefined == define ) 
+                    { 
+                        
+                        if( defineLANG_CODE ) { 
+                            getDefString( WORDNET_DEF, buff, ccc[ a ], counter  );
+                            std::cout << numDefined+1-1 << " ("<<relType[a]<<"). "<< buff << std::endl;
+                        }
+                        break; 
+                    }
                 }                            
             }
             
@@ -303,7 +326,10 @@ int main(const int argc, const char **const argv) {
     std::vector<ustring> exmapleSentences;
     if( sentences ) { 
 
-        for(unsigned int synIndex = 0, sentenceGrabbed = 0, synsetSIZE = synsetIDs.size(), SENTENCES_LEFT_TO_GRAB = sentences; 
+        // Special, only used if sentenceLANG_CODE used. 
+        // holds index of a given synidSET.
+        std::vector<unsigned int> exampleIndexes; 
+/*        for(unsigned int synIndex = 0, sentenceGrabbed = 0, synsetSIZE = synsetIDs.size(), SENTENCES_LEFT_TO_GRAB = sentences; 
                 sentenceGrabbed < sentences &&
                 synIndex < synsetSIZE; 
                     synIndex++, SENTENCES_LEFT_TO_GRAB = sentences - sentenceGrabbed 
@@ -329,32 +355,112 @@ int main(const int argc, const char **const argv) {
                             sentenceCounter++, sentenceGrabbed++
                    )
                 {
-                    exmapleSentences.push_back( retExamples[ sentenceCounter ] );
+std::cout << "add0(); ";
+                    if ( !sentenceLANG_CODE )     
+                        exmapleSentences.push_back( retExamples[ sentenceCounter ] );
+                    else { 
+                        exmapleSentences.push_back( holdSynsetIDs[ synIndex ] );
+                        exampleIndexes.push_back( sentenceCounter ); 
+                    }     
                 }
             }
         }          
+*/        
+        int CODE_TO_RETURN = 1;
+        if( sentenceLANG_CODE )
+            CODE_TO_RETURN = 0; // force grab of synsets instead of sentences; 
+        
         // Find any sentences(example) including term;
         if( exmapleSentences.size() < sentences ) { 
             
             std::vector<ustring> retExamples = getExampleSentences( Wordnet, 
                                                                       term,
                                                                       ( sentences - exmapleSentences.size() ),
-                                                                      exmapleSentences
+                                                                      exmapleSentences,
+                                                                      CODE_TO_RETURN
                                                                   );
+            std::vector<ustring> retExamplesIndexs;
+            const unsigned char**retExamplesIndexsChar = 0; 
+            if( sentenceLANG_CODE 
+            &&  exmapleSentences.size() + retExamples.size() >= sentences  ) { 
+                retExamplesIndexs = getExampleSentences( Wordnet, 
+                                                           term,
+                                                           ( sentences - exmapleSentences.size() ),
+                                                           exmapleSentences,
+                                                           2
+                                                       );
+                retExamplesIndexsChar = (const unsigned char**)&retExamplesIndexs[0];    
+            }
+
             int examplesSentencesToPUSH_BACK = retExamples.size();
             for(int i=0; i < examplesSentencesToPUSH_BACK; i++) { 
-                exmapleSentences.push_back( retExamples[ i ] );
+                if( !sentenceLANG_CODE ) { 
+                    exmapleSentences.push_back( retExamples[ i ] );
+                }
+                else
+                {
+                    if( retExamplesIndexsChar ) {
+                        exmapleSentences.push_back( retExamples[ i ] );
+                        std::size_t sentenceIndexNo = strToNum(
+                                                                (char *)retExamplesIndexsChar[ i ],
+                                                                0,
+                                                                strNumlen( 
+                                                                            (char *)retExamplesIndexsChar[ i ],
+                                                                            0
+                                                                         )
+                                                              );
+                        exampleIndexes.push_back( sentenceIndexNo  ); 
+                    }
+                    else { // insert dummy vals; 
+                        exmapleSentences.push_back( buff );
+                        exampleIndexes.push_back( 0 );                         
+                    }
+                }
             }        
             
             if( exmapleSentences.size() < sentences ) { 
                 retExamples = getGlossSentences( Wordnet, 
                                                  term,
                                                  ( sentences - exmapleSentences.size() ),
-                                                 exmapleSentences
+                                                 exmapleSentences,
+                                                 CODE_TO_RETURN
                                                );
+                if( sentenceLANG_CODE 
+                &&  exmapleSentences.size() + retExamples.size() >= sentences  ) { 
+                    retExamplesIndexs = getGlossSentences( Wordnet, 
+                                                               term,
+                                                               ( sentences - exmapleSentences.size() ),
+                                                               exmapleSentences,
+                                                               2
+                                                           );
+                    retExamplesIndexsChar = (const unsigned char**)&retExamplesIndexs[0];    
+                }
+
                 int examplesSentencesToPUSH_BACK = retExamples.size();
                 for(int i=0; i < examplesSentencesToPUSH_BACK; i++) { 
-                    exmapleSentences.push_back( retExamples[ i ] );
+                    if( !sentenceLANG_CODE )
+                    {
+                        exmapleSentences.push_back( retExamples[ i ] );
+                    }
+                    else
+                    {
+                        if( retExamplesIndexsChar ) {
+                            exmapleSentences.push_back( retExamples[ i ] );
+                            std::size_t sentenceIndexNo = strToNum(
+                                                                    (char *)retExamplesIndexsChar[ i ],
+                                                                    0,
+                                                                    strNumlen( 
+                                                                                (char *)retExamplesIndexsChar[ i ],
+                                                                                0
+                                                                             )
+                                                                  );
+                            exampleIndexes.push_back( sentenceIndexNo  ); 
+                        }
+                        else { // insert dummy vals; 
+                            exmapleSentences.push_back( buff );
+                            exampleIndexes.push_back( 0 );                         
+                        }
+                    }
                 }        
                 
             } 
@@ -363,7 +469,16 @@ int main(const int argc, const char **const argv) {
         if( exmapleSentences.size() ) { 
             std::cout << "Sentences: \n";
             for(unsigned int j=0;j < sentences&& j< exmapleSentences.size();j++) { 
-                std::cout << j+1   <<". " << exmapleSentences[j] << std::endl;
+                if( !sentenceLANG_CODE )
+                    std::cout << j+1   <<". " << exmapleSentences[j] << std::endl;
+                else { 
+                    if( j == sentences - 1 ) { 
+                        const unsigned char**synids = (const unsigned char**)&exmapleSentences[0];    
+                        // exmapleSentences[j] actually holds synsetID(NUM ONLY); 
+                        getDefString( WORDNET_EXE, buff, synids[ j ], exampleIndexes[j]+1  );
+                        std::cout << j+1   <<". " << buff << std::endl;
+                    }
+                }
             }
         }
     }
@@ -459,9 +574,7 @@ void numToStr(char *const retStr, const std::size_t i)
         copyI -=  (num * mult );
         retStr[c] = num + 0x30;
     }
-    copyI = i % 10;
-    retStr[len-1]= copyI;
-    retStr[len-1] += 0x30;
+    retStr[len-1] = (0x30+(i%10));
     retStr[len ] = '\0';
 
     return ;
@@ -522,7 +635,7 @@ std::cout << "CLI Japanese to Japanese dictionary.\n"
 		<< "\n"
 		<< "\t Term The term to lookup.\n"
 		<< "\t lang The 3-letter language code for translations. Avaliable options:\n"
-		<< "\t English(eng) (!! NOT IMPLEMENTED !!)\n"
+		<< "\t English(eng)\n"
 		<< "  -D\tDefine Term. If only Term is supplied, will define Term regardless.\n"
 		<< "\t Optional: supply the number of maximum definitions to list. Or if\n"
 		<< "\t lang was supplied, translates the number supplied.\n"
@@ -752,4 +865,32 @@ std::size_t largestSize(std::vector<std::size_t> begOff,
     }
     
     return largestDifference;
+}
+
+
+void getDefString( ParseFileClass &WN_D, 
+              unsigned char *buff,
+              const unsigned char *const synID,
+              const int synNumber )
+{
+    buff[0] = '\0';
+    if( !synNumber ) { return ; }
+    
+    WN_D.setGetPointer( 0 );
+    int LEN = 800;
+    std::size_t pos = 0;
+    for(int i = 0; i < synNumber; i++)  
+    {
+        pos = WN_D.findPos( synID );
+        WN_D.setGetPointer( pos+15 ); // Probably ownt skip entry;
+    }
+    WN_D.setGetPointer( pos );
+    
+    const unsigned char *const TAB = (unsigned char *)"\x09";
+    WN_D.getLine( buff, LEN, TAB ); // grabbed ID+grammar
+    WN_D.getLine( buff, LEN, TAB ); // grabbed index
+    
+    WN_D.getLine( buff, LEN, TAB ); // grabbed English!
+    
+    return ;
 }
