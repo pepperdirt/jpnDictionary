@@ -13,7 +13,9 @@
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-	-Last Updated:2017/12/10  - Version 0.0.2 + need test memcmp
+	-Last Updated:2017/12/10  - Version 0.0.2_a
+	                            + Ready to start implementing Eng code lookup
+                              - Version 0.0.2 + need test memcmp
 	                            + Adding parts of speach to definitions. 
 	                            + All source is revised to match cpp standards. 
 	                            + Synsets returns first synsets encounterd .
@@ -26,14 +28,16 @@
   
 */
     enum switch_names { FILE_NAME=0, VERSION_MAJOR=0, VERSION_MINOR=0,VERSION_=2 };
-    const char * const versLetter = "\0"; // Letter for in-between releases.
+    const char * const versLetter = "a"; // Letter for in-between releases.
     enum COMMAND_SWITCHES { 
          D_Define=1, 
          E_EXTRA_SENTENCES=2,
          S_SYNONYM=3,
          W_WORDNET=4,
-         H_help=5,
-         V_version=6,
+         G_GLOSS_ENG=5,
+         X_EXAMPLE_ENG=6,
+         H_help=7,
+         V_version=8,
          END_TERMINATOR=0
     };
 
@@ -68,8 +72,9 @@ std::size_t largestSize(std::vector<std::size_t> begOff,
 
 int main(const int argc, const char **const argv) {
 
-    const char * WORDNET_DB = "jpn_wn_lmf.xml";
-
+    const char * WORDNET_DB  = "jpn_wn_lmf.xml";
+    const char * WORDNET_EXAMPLES = "wnjpn-exe.tab";
+    const char * WORDNET_DEFINITION = "wnjpn-def.tab";
 
     if( argc == 1 ) { help(); return 0; }
     
@@ -88,10 +93,10 @@ int main(const int argc, const char **const argv) {
     unsigned int sentences = 0; // Random sentences, no format specified
     int synonym   = 0; // Num synonyms to list;
     const unsigned char *term;
-    const char *defineLANG_CODE = "\0";
-    const char *sentenceLANG_CODE = "\0";
+    const char *defineLANG_CODE = 0;
+    const char *sentenceLANG_CODE = 0;
     // const unsigned char HEADER[4]= { 0xEF, 0xBB, 0xBF, 0x00 };
-    
+
     // USER INPUT
     term = (unsigned char *)*(argv+argc-1); // Last value MUST BE term;
     
@@ -168,9 +173,25 @@ int main(const int argc, const char **const argv) {
         
     if(switchIndexes[ W_WORDNET ]  ) 
          WORDNET_DB = argv[switchIndexes[ W_WORDNET ]];
+    if(switchIndexes[ X_EXAMPLE_ENG ]  ) 
+         WORDNET_EXAMPLES = argv[switchIndexes[ X_EXAMPLE_ENG ]];
+    if(switchIndexes[ G_GLOSS_ENG ]  ) 
+         WORDNET_DEFINITION   = argv[switchIndexes[ G_GLOSS_ENG ]];
 
+    
+//    const char *defineLANG_CODE = 0;
+//    const char *sentenceLANG_CODE = 0;
+    ParseFileClass WORDNET_DEF( WORDNET_DEFINITION );
+    ParseFileClass WORDNET_EXE( WORDNET_EXAMPLES );
+    
+    
+
+//      static OPTIMIZE OPTIMIZE_SOME()    { return OPTIMIZE(1); }
+//      static OPTIMIZE OPTIMIZE_MORE()    { return OPTIMIZE(2); }
 
     kanjiDB::Wordnet_DictClass Wordnet( WORDNET_DB, kanjiDB::OPTIMIZE::NO_OPTIMIZATION ()  );
+//      kanjiDB::Wordnet_DictClass Wordnet( WORDNET_DB, kanjiDB::OPTIMIZE::OPTIMIZE_SOME()  );
+//      kanjiDB::Wordnet_DictClass Wordnet( WORDNET_DB, kanjiDB::OPTIMIZE::OPTIMIZE_MORE()  );
     if( 1==1 ) { 
         if( !Wordnet.fileLen() ) { 
             std::cout << "Error: "<< WORDNET_DB << " Not Found!\n";
@@ -182,12 +203,43 @@ int main(const int argc, const char **const argv) {
         unsigned char buff[4];
         // Test if GZIPPED
         Wordnet.readStr(buff, 3, 1);
-        int i = 0;
-        while( i<3 && buff[ i ] == GZIP_HEADER[ i ]  ){ i++; }
+        int i = 1; // cannot read first str w/readStr;
+        while( i<3 && buff[ i-1 ] == GZIP_HEADER[ i ]  ){ i++; }
         if( i == 3 ) { 
             std::cout << "Error: "<< WORDNET_DB << " Needs Unzipped!\n";        
             return 2; 
         }
+        
+        if( defineLANG_CODE ) { 
+            if( !WORDNET_DEF.getFileLength() ) {
+                std::cout << "Error: "<< WORDNET_DEFINITION << " Not Found!\n"; 
+                return 1; 
+            }
+            
+            WORDNET_DEF.read( buff, 3 );
+            i=0;
+            while( i<3 && buff[ i ] == GZIP_HEADER[ i ] ) { i++; }
+            if( i == 3 ) { 
+                std::cout << "Error: "<< WORDNET_DEFINITION << " Needs Unzipped!\n";        
+                return 2;                 
+            }
+        }
+        
+        if( sentenceLANG_CODE ) { 
+            if( !WORDNET_EXE.getFileLength() ) {
+                std::cout << "Error: "<< WORDNET_EXAMPLES << " Not Found!\n"; 
+                return 1; 
+            }
+            
+            WORDNET_EXE.read( buff, 3 );
+            i=0;
+            while( i<3 && buff[ i ] == GZIP_HEADER[ i ] ) { i++; }
+            if( i == 3 ) { 
+                std::cout << "Error: "<< WORDNET_EXAMPLES << " Needs Unzipped!\n";        
+                return 2;                 
+            }
+        }
+        
     }
 
     if( term && term[0] && !define && !sentences && !synonym ) { 
@@ -367,8 +419,14 @@ void getSwitchIndex(unsigned int *const ret, const int argc, const char **const 
                     break;
                case 'W':                
                     ret[ W_WORDNET ] = i+1; 
-                    break;               
-               
+                    break;           
+               case 'G':
+                    ret[ G_GLOSS_ENG ] = i+1;
+                    break;
+               case 'X':
+                    ret[ X_EXAMPLE_ENG ] = i+1;    
+                    
+                        
                case 'H': 
                     ret[ H_help ] = i+1; 
                     break;
@@ -454,11 +512,12 @@ void help() {
 std::cout << "CLI Japanese to Japanese dictionary.\n"
 //         <<"jpn_dict.exe [-W jpn_wn_lmf.xml] [-D ## ] [-S ## ] [-E ## ] [-V] [-H] Term\n"
          <<"jpn_dict.exe [-D [lang] [##] ] [-S [##] ] [-E [lang] [##] ]\n"
-         <<" [-W jpn_wn_lmf.xml] [-V] [-H] Term\n"
+         <<" [-W jpn_wn_lmf.xml] [-G wnjpn-def.tab] [-X wnjpn-exe.tab] [-V] [-H] Term\n"
 // Going to change format to: [-D [eng] [##] ]
 // [eng] will modify output to display english and optional ## for a single english translation. 
          << "\nDictionarie -W is Requried. Download First and\n"
          << "supply to program. Default value: jpn_wn_lmf.xml\n"
+         << "English meanings for definitions(-G) and examples(-X) are also avaliable.\n"
 
 		<< "\n"
 		<< "\t Term The term to lookup.\n"

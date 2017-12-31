@@ -210,7 +210,7 @@ WORDNET_OPTIMIZE_LEVEL( O.getVal() ),
     kebSize++; 
     
  if( WORDNET_OPTIMIZE_LEVEL == 1 ) { return ; }
- 
+ return ;
      // Too memory intensive to create 2nd lookup table; 
     // Need to rethink methodology; 
     
@@ -246,7 +246,7 @@ WORDNET_OPTIMIZE_LEVEL( O.getVal() ),
         // <Synset id='jpn-1.1-01211489-n' baseConcept='3'>
 
         // Get the sence number ( matches to a definnition and example sentence; )x
-        KanjiInfoClass::setIndex( i );
+        KanjiInfoClass::setIndex( i+1 );
 
         // get searchStrings for below loop. 
         // Finding definition/example positions for each SynSence;
