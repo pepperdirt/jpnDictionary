@@ -13,7 +13,9 @@
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-	-Last Updated:2017/12/10  - Version 0.1.0
+	-Last Updated:2017/12/10  - Version 0.1.1
+	                            + logic error, English supplied when no switches present fixed. 
+                              - Version 0.1.0
                                 + English translations added. 
 	                            + Ready to start implementing Eng code lookup
                               - Version 0.0.2 + need test memcmp
@@ -28,7 +30,7 @@
 	                            Version 
   
 */
-    enum switch_names { FILE_NAME=0, VERSION_MAJOR=0, VERSION_MINOR=1,VERSION_=0 };
+    enum switch_names { FILE_NAME=0, VERSION_MAJOR=0, VERSION_MINOR=1,VERSION_=1 };
     const char * const versLetter = "\0"; // Letter for in-between releases.
     enum COMMAND_SWITCHES { 
          D_Define=1, 
@@ -111,7 +113,7 @@ int main(const int argc, const char **const argv) {
                                         0
                                      )
                          );
-        if( !define  ) 
+        if( !define && switchIndexes[ D_Define ] != argc-1 ) 
         {  
             // If not number, must be the 3-letter lang code.
             defineLANG_CODE = argv[switchIndexes[ D_Define ]];
@@ -144,7 +146,7 @@ int main(const int argc, const char **const argv) {
                                             0
                                          )
                              );
-        if( !sentences  ) 
+        if( !sentences && switchIndexes[ E_EXTRA_SENTENCES ] != argc-1 ) 
         {  
             // If not number, must be the 3-letter lang code.
             sentenceLANG_CODE = argv[switchIndexes[ E_EXTRA_SENTENCES ]];
