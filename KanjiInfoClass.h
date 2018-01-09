@@ -3,10 +3,10 @@
 #include <fstream>
 #include <vector>
 #include <string>
-#include "ParseFileClass.cpp" // Version 2.0.1_; 
+#include "ParseFileClass.cpp" // Version 2.0.1; 
 
 
-  const char KanjiInfoClass_VERSION[]= "1.0.1_";
+  const char KanjiInfoClass_VERSION[]= "1.0.0a";
 
 namespace unsigned_types { 
     typedef std::basic_string<unsigned char> ustring;
@@ -39,7 +39,7 @@ class KanjiInfoClass {
                                                       if( keyTable.size() )
                                                           keyTable.push_back( 0 );  
                                                       }
-           unsigned char *const &getDB() const { return DB->getRaw(); }
+           const unsigned char *const getDB() const { return DB->getRaw(); }
            
            std::size_t searchStr(const unsigned char *str
                                  , const std::size_t beg = 0
@@ -126,6 +126,8 @@ class KanjiInfoClass {
 
            }      
            
+           // Return 0 on success. 
+           virtual int incrementIndex() { return KanjiInfoClass::setIndex( lastLookup+1 ); }
            
            // Documentation purposes, MUST BE 1 or greater at all times; 
            void resetKanjiIndex() { lastLookup = 1; }
@@ -151,13 +153,14 @@ class KanjiInfoClass {
                    // Use 'lookupIndex' as POSITION; 
                    if( lookupIndex < fileLen() ) { 
                        lastLookup = lookupIndex;
+                       return 0;
                    }
                }
                return 1;
            }
 
-           virtual std::vector<ustring> onyomi()  const = 0; // DB disables const keyword;
-           virtual std::vector<ustring> kunyomi() const = 0;           
+           virtual std::vector<ustring> onyomi()  const   = 0; // DB disables const keyword;
+           virtual std::vector<ustring> kunyomi() const   = 0;           
            
     private:
            // Only used by non-virtual member functions.

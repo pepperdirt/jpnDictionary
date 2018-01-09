@@ -3,8 +3,16 @@
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-         Latest update 2017/12/23 - Version 1.0.1_
-                                    + Updated to comply w/cpp standards
+         Latest update 2018/01/09 - Version 1.0.0a
+                                    + virtual incrementIndex() added
+                                      - Allows client code to override implementation
+                                    + int setIndex(std::size_t lookupIndex)
+                                      - CHANGED RETURN VALUE!
+                                        * Allows success(0) returned for no lookupTable
+                                          condition. 
+                                        * Client code will use this value(success/fail);
+                                      
+                                        (for instance, when client DOES NOT want a lookup table)
                                   - Version 1.0.0
                                     + too much stuff to list; 
                                     + if user of class didn't know implementation details, should be okay, 
@@ -46,12 +54,12 @@ std::size_t KanjiInfoClass::kanjiNumber(const unsigned char *kanji) const
     int MAX_KANJI_SIZE = 80;
     std::size_t i=0, kPos = 0;
     
-    int kanjiSize = 0, compare = 0;
+    int kanjiSize = 0, j=0, compare = 0;
     while(  kanjiSize<MAX_KANJI_SIZE && kanji[kanjiSize]  ) { kanjiSize++; }
     
     std::size_t beg = 0;
     if( searchStr( kanji, getKeyPos( lastLookup ) ) != getKeyPos(lastLookup) ) {
-        for( i = 1; i < size; i++, compare=0) { 
+        for( i = 1; i < size; i++,j=0, compare=0) { 
             kPos = getKeyPos(i);
             
             // Compare key w/Kanji; 

@@ -1,11 +1,13 @@
 #include "ParseFileClass.h"
 
-  const char ParseFileClass_VERSION[]= "2.0.1_";
+  const char ParseFileClass_VERSION[]= "2.0.1a";
 /*
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-         Latest update 2017/12/07 - Version 2.0.1_
+         Latest update 2017/12/07 - Version 2.0.1a
+                                    + Uses memcmp in comparisons(speedy)
+                                  - Version 2.0.1_
                     + Updated to comply w/cpp standards
 				    + Cleaning up code;
 	 			    Version 2.0.1
@@ -60,12 +62,14 @@ ParseFileClass::~ParseFileClass()
     file = 0;
 }
 
+
+/* // Vrsion 0
 // ret pos of agr1 in file; 
 // if arg3, then returns pos after arg3(if found), but does not add to retString
 std::size_t ParseFileClass::findPos(const unsigned char paramSearchString[],
                                            const unsigned char endDelimString[]=(const unsigned char *)"\0",
-                                           const int paramLen =0,
-                                           const int searchDirection =0 ) const // 0 == positive direction; 1 == negative; 
+                                           const int &paramLen =0,
+                                           const int &searchDirection =0 ) const // 0 == positive direction; 1 == negative; 
 {
     if( !paramSearchString || ptrPosition == fileLength) { return 0; }
     int iterator= 1;
@@ -77,13 +81,14 @@ std::size_t ParseFileClass::findPos(const unsigned char paramSearchString[],
     }
     if( strLen == 0 ) { return 0; }
 
-    if( paramLen ) {  // checks for out of bounds arg3;
-        int i = 0;
-        while( paramSearchString[i] ) { i++; }
-        if( i < paramLen ) { return 0; } // ParamLen exceeds buffer!
-    }
+//    if( paramLen ) {  // checks for out of bounds arg3;
+//        int i = 0;
+//        while( paramSearchString[i] ) { i++; }
+//        if( i < paramLen ) { return 0; } // ParamLen exceeds buffer!
+//    }
 
     // creates unsigned copy of endDelim;
+    unsigned int count = 0;; 
     int delimLen = 0; while( endDelimString[ delimLen ] ) { delimLen++; }
 
     std::size_t pos = ptrPosition;
@@ -110,6 +115,69 @@ std::size_t ParseFileClass::findPos(const unsigned char paramSearchString[],
     
     return 0;
 }
+*/
+
+
+// Version 2; 
+//   - Not much faster. A little less ledgible. Probably scrap for orignial... Maybe. 
+// ret pos of agr1 in file; 
+// if arg3, then returns pos after arg3(if found), but does not add to retString
+std::size_t ParseFileClass::findPos(const unsigned char *paramSearchString,
+                                           const unsigned char *endDelimString=(const unsigned char *)"\0",
+                                           const int &paramLen =0,
+                                           const int &searchDirection =0 ) const // 0 == positive direction; 1 == negative; 
+{
+    if( !paramSearchString || ptrPosition == fileLength) { return 0; }
+    int iterator= 1;
+    if( searchDirection ) { iterator = -1; }
+
+    std::size_t strLen = paramLen;
+    if( strLen == 0 ) { 
+        while( paramSearchString[strLen] ) { strLen++; }
+    }
+    if( strLen == 0 ) { return 0; }
+
+//    if( paramLen ) {  // checks for out of bounds arg3;
+//        int i = 0;
+//        while( paramSearchString[i] ) { i++; }
+//        if( i < paramLen ) { return 0; } // ParamLen exceeds buffer!
+//    }
+
+    // creates unsigned copy of endDelim;
+    int delimLen = 0; while( endDelimString[ delimLen ] ) { delimLen++; }
+
+    const unsigned char *const zeroPosition = file;
+    
+    if( ptrPosition <= fileLength-strLen ) { // even if -iterator, numWrap will exceed fileLen;
+
+        std::size_t endPointerPos = (fileLength - (strLen - 1));
+        if( iterator < 0 ) {
+              endPointerPos = 0;
+        }
+        file += ptrPosition; 
+        while( file != ( zeroPosition+endPointerPos ) ) { 
+        
+            if( memcmp( paramSearchString, file, strLen ) == 0 ) { // std::cout << "MATCH!; ";           
+                // REPURPOSE strLen. == posOfMatch; 
+                strLen = (file) - zeroPosition;
+                file -= strLen;
+                return  strLen;
+            }
+            
+            if( delimLen && memcmp( endDelimString, file, delimLen ) == 0 ) { // std::cout << "MATCH!; ";           
+                strLen = 0;
+                break;         
+            }
+                          
+            file+= iterator; 
+        }
+
+        file -= (file - zeroPosition);
+    }    
+    
+    return 0;
+}
+
 
 // ret pos after recieved text. 
 // if arg3, then returns pos OF arg3(if found)
