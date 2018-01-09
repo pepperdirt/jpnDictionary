@@ -159,7 +159,7 @@ WORDNET_OPTIMIZE_LEVEL( O.getVal() ),
         // skips past keb delim; ( moves position pointer past '<keb>' )        
         numericKeySum = db[pos+2]; numericKeySum |= (db[pos+1]<<8); numericKeySum |= (db[pos+0]<<16);  
         keySum.push_back( numericKeySum );
-        
+
     // END FIRST KEB !!
 
     // First sweep finds kanji with okurigana 
@@ -656,6 +656,12 @@ std::vector<ustring> Wordnet_DictClass::synRealtionTypes() const
 std::size_t Wordnet_DictClass::kanjiNumber(const unsigned char *term) const
 {
     const int term_MAX_SIZE = 24;
+    if( !term ) { return 0; }
+    
+    const int STR_SIZE = strlen((char *)term);
+    if( STR_SIZE > term_MAX_SIZE ) { return 0; }
+
+    
     std::size_t beg = 0;
     // This should be safe (getKeyPos won't throw run-time error ); 
     // Safe to run below searchStr(); - Arg2 MUST NOT be 0 when no keyTable set ( Wordnet.getKeySize()==0 );
@@ -668,10 +674,9 @@ std::size_t Wordnet_DictClass::kanjiNumber(const unsigned char *term) const
     }
 
     // Find strPos;
-    const int STR_SIZE = strlen((char *)term);
     int STR_LEN = STR_SIZE;
     if( STR_LEN > term_MAX_SIZE ) { STR_LEN = term_MAX_SIZE; }
-    unsigned char tmp[ term_MAX_SIZE + 2 + 1 ];
+    unsigned char tmp[ term_MAX_SIZE + 2 + 1 + 1 ]; // Prepend ='(2), Suffix '(1) + NULL_TERMINATOR(1)
     int i=0; 
     tmp[ i ] = '\'';
     i++;
@@ -753,8 +758,8 @@ std::vector<ustring> synsetIdWrittenForm(Wordnet_DictClass &WN)
     unsigned char buff[320];
     std::size_t SAVED_SYNSET_INDEX = WN.getIndex(); // term lookup; 
     std::size_t SYNSET_INDEX = 1;
-    WN.setIndex( SYNSET_INDEX ); // CANNOT == 0; 
-
+    WN.resetKanjiIndex(); // CANNOT == 0; 
+    
     std::vector<ustring> synsetRelTypes = WN.synRealtionTypes();
     
     std::vector<ustring> synsetRelations = WN.synRealtions();

@@ -13,7 +13,9 @@
  * Programmer:	Pepperdirt
  * github:	github.com/pepperdirt
  *
-	-Last Updated:2017/12/10  - Version 0.1.1
+	-Last Updated:2017/12/10  - Version 0.1.1a
+	                            + Hardly a performance increase(ParseFileClass_V2.0.1a
+                              - Version 0.1.1
 	                            + logic error, English supplied when no switches present fixed. 
                               - Version 0.1.0
                                 + English translations added. 
@@ -31,7 +33,7 @@
   
 */
     enum switch_names { FILE_NAME=0, VERSION_MAJOR=0, VERSION_MINOR=1,VERSION_=1 };
-    const char * const versLetter = "\0"; // Letter for in-between releases.
+    const char * const versLetter = "a"; // Letter for in-between releases.
     enum COMMAND_SWITCHES { 
          D_Define=1, 
          E_EXTRA_SENTENCES=2,
@@ -102,7 +104,7 @@ int main(const int argc, const char **const argv) {
 
     // USER INPUT
     term = (unsigned char *)*(argv+argc-1); // Last value MUST BE term;
-    
+
     if(switchIndexes[ D_Define ]  ) 
     {
         define = strToNum(
@@ -163,6 +165,7 @@ int main(const int argc, const char **const argv) {
                                  );
         }
         if(!sentences) { sentences = 1; }
+//std::cout << "Sent("<<sentences<<"); ";
     }
         
     if(switchIndexes[ S_SYNONYM ]  ) 
@@ -255,8 +258,10 @@ int main(const int argc, const char **const argv) {
     
     // Sets the term for Wordnet to use;
     if( Wordnet.setKanji( term ) != 0 ) {
-        std::cout << "term( "<<term<<" ) not found.\n";
-        return 1;
+        if( define || synonym ) { 
+            std::cout << "term( "<<term<<" ) not found.\n";
+            return 1;
+        }
     } 
     // synsetIDs are the similar terms(IDs) matching term; 
     std::vector<ustring> synsetIDs = Wordnet.synset();    
@@ -264,6 +269,9 @@ int main(const int argc, const char **const argv) {
 
     const unsigned char **holdSynsetIDs;
     if( synsetIDs.size() ) { holdSynsetIDs = (const unsigned char**)&synsetIDs[0];}
+//    else { 
+//        synonym = 0; // Cannot lookup syns without; 
+//    }
     std::size_t holdSynsetID_Index = 0;
     
     // Print the first synsetID( snynset ) w/a definition
@@ -396,6 +404,7 @@ std::cout << "add0(); ";
 
             int examplesSentencesToPUSH_BACK = retExamples.size();
             for(int i=0; i < examplesSentencesToPUSH_BACK; i++) { 
+
                 if( !sentenceLANG_CODE ) { 
                     exmapleSentences.push_back( retExamples[ i ] );
                 }
@@ -435,7 +444,8 @@ std::cout << "add0(); ";
                                                                exmapleSentences,
                                                                2
                                                            );
-                    retExamplesIndexsChar = (const unsigned char**)&retExamplesIndexs[0];    
+                    if( retExamplesIndexs.size() ) 
+                        retExamplesIndexsChar = (const unsigned char**)&retExamplesIndexs[0];    
                 }
 
                 int examplesSentencesToPUSH_BACK = retExamples.size();
@@ -488,7 +498,9 @@ std::cout << "add0(); ";
 
     // Print synonyms
     if( synonym ) {
+std::cout << "Syn; ";
         Wordnet.setSynsetPos( holdSynsetIDs[ 0 ] );        
+std::cout << "Good. ";
         std::vector<ustring> termsMatchingSynsets = synsetIdWrittenForm( Wordnet );
         const int matchSize = termsMatchingSynsets.size();
         if( matchSize ) { 
